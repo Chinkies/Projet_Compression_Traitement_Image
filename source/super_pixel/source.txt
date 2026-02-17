@@ -1,0 +1,9 @@
+https://www.mathworks.com/help/images/ref/superpixels.html
+
+https://nicolas.thiery.name/Enseignement/Info111/Projet-Image/partie-6.html
+
+http://vision.gel.ulaval.ca/~jflalonde/cours/4105/h17/tps/results/projet/111063028/index.html
+
+https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_segmentations.html
+
+https://lezoray.users.greyc.fr/Students/Dallocchio_MS_2022.pdf
