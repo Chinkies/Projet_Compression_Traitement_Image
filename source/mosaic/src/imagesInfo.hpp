@@ -2,18 +2,8 @@
 
 #include "lib/ImageBase.h"
 #include "lib/Pixel.hpp"
-#include "lib/Traitement.hpp"
-
-#include <iostream>
 #include <vector>
-#include <filesystem>
-
-#include "lib/ImageBase.hpp"
-#include "lib/Pixel.hpp"
-
-namespace fs = std::filesystem;
-
-std::vector<ImgInfo> imgInfos;
+#include <string>
 
 struct ImgInfo {
     double R = 0, B = 0, G = 0;
@@ -54,32 +44,5 @@ struct ImgInfo {
 
 };
 
-void initImgInfos() {
-    
-    std::string path = "media/db";
-
-    // Parcours du dossier media/db
-    for (const auto& entry : fs::directory_iterator(path)) {
-        if (entry.is_regular_file()) {
-            std::string filePath = entry.path().string();
-            std::string fileName = entry.path().filename().string();
-
-            // Traitement de l'image pour calculer les valeurs moyennes de R, G, B ou N si nuance de gris
-            ImgInfo info;
-            ImageBase image(filePath);
-
-            info.name = fileName;
-
-            int height = image.getHeight();
-            int width = image.getWidth();
-
-            for (int y = 0; y < height; ++y) {
-                for (int x = 0; x < width; ++x) {
-                    info += image.getPixel(x, y)
-                }
-            }
-
-            imgInfos.push_back(info);
-        }
-    }
-}
+extern std::vector<ImgInfo> imgInfos;
+void initImgInfos();

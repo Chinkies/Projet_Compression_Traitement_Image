@@ -7,16 +7,16 @@ ImageBase get_corresponding_image(bool color, int m) {
             double avgColor = (imgInfo.R + imgInfo.G + imgInfo.B) / 3.0;
             if (std::abs(avgColor - m) < 10) { // Seuil de 10 pour trouver une image similaire
                 ImageBase img;
-                img.load(imgInfo.name.c_str());
+                img.load(const_cast<char*>(imgInfo.name.c_str()));
                 return img;
             }
         } else if (std::abs(imgInfo.N - m) < 10) { // Seuil de 10 pour trouver une image similaire
                 ImageBase img;
-                img.load(imgInfo.name.c_str());
+                img.load(const_cast<char*>(imgInfo.name.c_str()));
                 return img;
             }
         }
-    return nullptr; // Retourne nullptr si aucune image similaire n'est trouvée
+    return ImageBase();
 }
 
 ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight) {

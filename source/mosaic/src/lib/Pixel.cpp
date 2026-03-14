@@ -1,4 +1,5 @@
 #include "Pixel.hpp"
+#include "ImageBase.h"
 #include <cmath>
 
 Pixel::Pixel(unsigned char *data, unsigned int x, unsigned int y) {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include"ImageBase.h"
+class ImageBase;
 
 class Pixel {
 public:
