@@ -10,6 +10,17 @@ struct ImgInfo {
     double N = 0;
     std::string name;
 
+    std::string getBinPath() const
+    {
+        int separatorPos = name.find_last_of(':');
+        return name.substr(0, separatorPos);
+    }
+    int getBinId() const
+    {
+        int separatorPos = name.find_last_of(':');
+        return std::stoi(name.substr(separatorPos + 1));
+    }
+
     void operator+=(const Pixel& pixel) {
         if (pixel.color) {
             R += pixel.R;
@@ -46,3 +57,4 @@ struct ImgInfo {
 
 extern std::vector<ImgInfo> imgInfos;
 void initImgInfos();
+void initImgInfosFromBin(const std::string& _filePath);

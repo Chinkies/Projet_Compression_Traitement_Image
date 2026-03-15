@@ -3,16 +3,23 @@
 
 ImageBase get_corresponding_image(bool color, int m) {
     for (const auto& imgInfo : imgInfos) {
+
+        std::string path = imgInfo.getBinPath();
+        int id = imgInfo.getBinId();
+
+        //TODO : ne fonctionne qu'avec des images couleurs
         if (color) {
             double avgColor = (imgInfo.R + imgInfo.G + imgInfo.B) / 3.0;
             if (std::abs(avgColor - m) < 10) { // Seuil de 10 pour trouver une image similaire
                 ImageBase img;
-                img.load(const_cast<char*>(imgInfo.name.c_str()));
+                //img.load(const_cast<char*>(imgInfo.name.c_str()));
+                img.loadFromBin(const_cast<char*>(path.c_str()), id);
                 return img;
             }
         } else if (std::abs(imgInfo.N - m) < 10) { // Seuil de 10 pour trouver une image similaire
                 ImageBase img;
                 img.load(const_cast<char*>(imgInfo.name.c_str()));
+                
                 return img;
             }
         }
