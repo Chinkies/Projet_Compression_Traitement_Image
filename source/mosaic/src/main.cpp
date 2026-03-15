@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     int seuilVariance = 500; // Seuil de variance pour la subdivision
     int tailleMin = 16; // Taille minimale d'une région pour la subdivision
 
-    mosaique2(imIn, imOut, 0, 0, seuilVariance, tailleMin);
+    mosaique2(imIn, imOut, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, tailleMin);
 
 	imOut.save("test.ppm");
 }

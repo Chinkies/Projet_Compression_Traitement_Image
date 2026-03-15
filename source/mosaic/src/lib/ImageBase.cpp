@@ -150,14 +150,14 @@ void ImageBase::readFromBin(char nom_image[], OCTET *pt_image,
 	// On ignore le label
 	file.ignore(1);
 	
-	std::vector<int> image(3*imgSize);
+	std::vector<OCTET> image(3*imgSize);
 	file.read(reinterpret_cast<char*>(image.data()), image.size());
 	
-	for (int i = 0; i < imgSize; ++i) 
+	for (int i = 0; i < area; ++i) 
 	{
         pt_image[i * 3 + 0] = image[i];                 
-        pt_image[i * 3 + 1] = image[i + imgSize];   
-        pt_image[i * 3 + 2] = image[i + 2 * imgSize];
+        pt_image[i * 3 + 1] = image[i + area];   
+        pt_image[i * 3 + 2] = image[i + 2 * area];
     }
 
 	file.close();
@@ -178,7 +178,7 @@ void ImageBase::loadFromBin(char *filename, const int index)
 	width = 32;
 	nbPixel = height * width;
 	
-	nTaille = nbPixel;
+	nTaille = nbPixel * 3;
 	allocation_tableau(data, OCTET, nTaille);
 
 	//void ImageBase::readFromBin(char nom_image[], OCTET *pt_image, 
@@ -304,6 +304,23 @@ void ImageBase::setPixel(const Pixel& pixel) {
 	}
 	int index = (pixel.y * width + pixel.x) * (color ? 3 : 1);
 	
+	if (color) {
+		data[index] = pixel.R;
+		data[index + 1] = pixel.G;
+		data[index + 2] = pixel.B;
+	} else {
+		data[index] = pixel.N;
+	}
+}
+
+void ImageBase::setPixelTo(int x, int y, const Pixel& pixel) 
+{
+	if (x < 0 || x >= width || y < 0 || y >= height) {
+		throw std::out_of_range("coordinates x or y are out of bounds");
+	}
+
+	int index = (y * width + x) * (color ? 3 : 1);
+
 	if (color) {
 		data[index] = pixel.R;
 		data[index + 1] = pixel.G;

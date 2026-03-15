@@ -66,7 +66,7 @@ void initImgInfosFromBin(const std::string& _filePath)
     // taile de la ligne (label + area * 3)
     int imgSize = 1 + area * 3;
 
-    std::vector<int> currentImg(imgSize);
+    std::vector<unsigned char> currentImg(imgSize);
     int id = 0;
 
     while (file.read(reinterpret_cast<char*>(currentImg.data()), imgSize))

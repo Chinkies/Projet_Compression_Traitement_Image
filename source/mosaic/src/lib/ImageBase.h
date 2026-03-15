@@ -66,6 +66,7 @@ public:
 	unsigned char *getData() { return data; };
 	Pixel getPixel(int x, int y);
 	void setPixel(const Pixel& pixel);
+	void setPixelTo(int x, int y, const Pixel& pixel);
 
 
 	void copy(const ImageBase &copy);
