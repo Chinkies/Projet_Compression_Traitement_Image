@@ -16,8 +16,6 @@
 #include "ImageBase.h"
 #include "image_ppm.h"
 
-
-
 ImageBase::ImageBase(void)
 {
 	isValid = false;
@@ -119,6 +117,75 @@ void ImageBase::load(char *filename)
 		exit(0);
 	}
 	
+	dataD = (double*)malloc(sizeof(double) * nTaille);
+
+	isValid = true;
+}
+
+
+void ImageBase::readFromBin(char nom_image[], OCTET *pt_image, 
+	const int index, const int width, const int height)
+{
+	int area = width * height;
+	int imgSize = 1 + (3 * area);
+	
+    std::ifstream file(nom_image, std::ios::binary);
+
+	if (!file) 
+	{
+		printf("Impossible d'ouvrir %s \n", nom_image);
+		exit(EXIT_FAILURE);
+	}
+
+	// On se positionne sur la bonne image (index)
+	std::streampos offset = static_cast<std::streampos>(index) * imgSize;
+	file.seekg(offset);
+
+	if (!file.good())
+	{
+		printf("Index hors limit du fichier");
+		return;
+	}
+
+	// On ignore le label
+	file.ignore(1);
+	
+	std::vector<int> image(3*imgSize);
+	file.read(reinterpret_cast<char*>(image.data()), image.size());
+	
+	for (int i = 0; i < imgSize; ++i) 
+	{
+        pt_image[i * 3 + 0] = image[i];                 
+        pt_image[i * 3 + 1] = image[i + imgSize];   
+        pt_image[i * 3 + 2] = image[i + 2 * imgSize];
+    }
+
+	file.close();
+}
+
+// TODO : Rendre generique pour la taille de l'image (width & height)
+// Only for bin to ppm file
+// Work for 
+void ImageBase::loadFromBin(char *filename, const int index)
+{
+	init();
+
+	int nbPixel = 0; 
+
+	color = true;
+
+	height = 32;
+	width = 32;
+	nbPixel = height * width;
+	
+	nTaille = nbPixel;
+	allocation_tableau(data, OCTET, nTaille);
+
+	//void ImageBase::readFromBin(char nom_image[], OCTET *pt_image, 
+	//const int index, const int width, const int height)
+
+	readFromBin(filename, data, index, width, height);
+
 	dataD = (double*)malloc(sizeof(double) * nTaille);
 
 	isValid = true;

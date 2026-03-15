@@ -17,6 +17,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdexcept>
+#include <fstream>
+#include <vector>
 
 #include "Pixel.hpp"
 
@@ -52,6 +54,8 @@ public:
 	
 	///////////// Methodes
 protected:
+	void readFromBin(char nom_image[], unsigned char *pt_image, 
+		const int index, const int width, const int height);
 
 public:
 	int getHeight() { return height; };
@@ -68,6 +72,7 @@ public:
 
 
 	void load(char *filename);
+	void loadFromBin(char *filename, const int index);
 	bool save(char *filename);
 
 	ImageBase *getPlan(PLAN plan);

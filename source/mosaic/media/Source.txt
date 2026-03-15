@@ -8,3 +8,7 @@ https://francis-press.com/uploads/papers/MfBDX8D7SsbozeqwDOF828vhzPD1PdjwMQ7k2oj
 https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9824924&tag=1
 
 file:///home/e20250003175/T%C3%A9l%C3%A9chargements/10507.pdf
+
+DATABASE Imagette
+
+https://www.cs.toronto.edu/~kriz/cifar.html
