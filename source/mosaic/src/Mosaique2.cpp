@@ -47,8 +47,49 @@ ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight) {
     Malheureusement je n'ai pas de base de donnée d'image pour pouvoir tester.
 */
 
+void mosaique(ImageBase &imIn, ImageBase &imOut, float percent) {
+    int width = imIn.getWidth();
+    int height = imIn.getHeight();
+
+    int gridWidth = static_cast<int>(width * percent);
+    int gridHeight = static_cast<int>(height * percent);
+
+    if (gridWidth <= 0) gridWidth = 1;
+    if (gridHeight <= 0) gridHeight = 1;
+
+    for (int y0 = 0; y0 < height; y0 += gridHeight) {
+        for (int x0 = 0; x0 < width; x0 += gridWidth) {
+            int tileWidth = std::min(gridWidth, width - x0);
+            int tileHeight = std::min(gridHeight, height - y0);
+
+            int m = 0;
+            for (int y = y0; y < y0 + tileHeight; ++y) {
+                for (int x = x0; x < x0 + tileWidth; ++x) {
+                    Pixel p = imIn.getPixel(x, y);
+                    m += (p.R + p.G + p.B) / 3;
+                }
+            }
+
+            m /= (tileWidth * tileHeight);
+
+            ImageBase imagette = get_corresponding_image(imIn.getColor(), m);
+            if (!imagette.getValidity()) {
+                continue;
+            }
+
+            ImageBase resized = resizeImage(imagette, tileWidth, tileHeight);
+
+            for (int y = 0; y < tileHeight; ++y) {
+                for (int x = 0; x < tileWidth; ++x) {
+                    imOut.setPixelTo(x0 + x, y0 + y, resized.getPixel(x, y));
+                }
+            }
+        }
+    }
+}
+
 void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
-    int regionWidth, int regionHeight, int seuilVariance, int tailleMin) {
+    int regionWidth, int regionHeight, int seuilVariance, int tailleMin, int grilleMin) {
 
     int demiWidth = regionWidth / 2;
     int demiHeight = regionHeight / 2;
@@ -106,8 +147,8 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
     float v4 = Traitement::variance(r4);
 
     //TODO : à corriger 
-    if (v1 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) {
-        mosaique2(imIn, imOut, x0, y0, demiWidth, demiHeight, seuilVariance, tailleMin);
+    if ((v1 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) || grilleMin > 0) {
+        mosaique2(imIn, imOut, x0, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1);
     } else {
         // Mettre l'image correspondante dans imOut
         ImageBase img = get_corresponding_image(imIn.getColor(), m1);
@@ -123,8 +164,8 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
         }
     }
 
-    if (v2 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) {
-        mosaique2(imIn, imOut, x0 + demiWidth, y0, demiWidth, demiHeight, seuilVariance, tailleMin);
+    if ((v2 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) || grilleMin > 0) {
+        mosaique2(imIn, imOut, x0 + demiWidth, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1);
     } else {
         // Mettre l'image correspondante dans imOut
         ImageBase img = get_corresponding_image(imIn.getColor(), m2);
@@ -140,8 +181,8 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
         }
     }
 
-    if (v3 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) {
-        mosaique2(imIn, imOut, x0, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin);
+    if ((v3 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) || grilleMin > 0) {
+        mosaique2(imIn, imOut, x0, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1);
     } else {
         // Mettre l'image correspondante dans imOut
         ImageBase img = get_corresponding_image(imIn.getColor(), m3);
@@ -157,8 +198,8 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
         }
     }
 
-    if (v4 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) {
-        mosaique2(imIn, imOut, x0 + demiWidth, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin);
+    if ((v4 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) || grilleMin > 0) {
+        mosaique2(imIn, imOut, x0 + demiWidth, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1);
     } else {
         // Mettre l'image correspondante dans imOut
         ImageBase img = get_corresponding_image(imIn.getColor(), m4);

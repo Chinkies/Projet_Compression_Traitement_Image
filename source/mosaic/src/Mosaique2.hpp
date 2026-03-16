@@ -8,4 +8,5 @@
 ImageBase get_corresponding_image(bool color, int m);
 ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight);
 void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
-    int regionWidth, int regionHeight, int seuilVariance, int tailleMin);
+    int regionWidth, int regionHeight, int seuilVariance, int tailleMin, int grilleMin);
+void mosaique(ImageBase &imIn, ImageBase &imOut, float percent = 0.05);

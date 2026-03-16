@@ -108,3 +108,26 @@ rectangle([
 caption: "On peut constater divers axes d'amélioration : une taille de grille minimum et une taille d'imagette maximale en fonction de la taille de l'image d'origine, ne pas réutiliser plusieurs fois la même imagettes et affiner la sélection d'imagettes"
 )
 \
+
+= Mosaïque d'images avec taille de grille fixe
+
+Voici une version de la mosaïque où nous avons fixé la taille de la grille à 1% de la taille de l'image d'origine. Nous avons sélectionné l'imagette ayant la moyenne de couleur la plus proche de la moyenne de la zone à remplacer, en utilisant la distance euclidienne dans l'espace RGB pour mesurer la proximité entre les couleurs.
+
+#figure(
+rectangle([
+  #[
+    #set text(size: 11pt)
+    #grid(
+      columns: (auto, auto),
+      rows: (auto, 1em),
+      row-gutter: (1em),
+      image("src.png", width: 100%),
+      image("test.png", width: 100%),
+      [Image originale],
+      [Image mosaïque],
+    )
+ ]
+], fill: silver, stroke: black),
+caption: "L'image est plus reconnaissable qu'avec la version avec subdivision récursive, mais on perd en qualité d'image et en compression (taille de l'image mosaïque plus grande que celle de l'image originale). De plus le même problème de réutilisation d'imagettes se pose."
+)
+\

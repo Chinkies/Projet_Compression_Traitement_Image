@@ -26,9 +26,11 @@ int main(int argc, char **argv) {
 	initImgInfosFromBin(databaseLue);
 
     int seuilVariance = 500; // Seuil de variance pour la subdivision
-    int tailleMin = 16; // Taille minimale d'une région pour la subdivision
+    int tailleMin = std::max(imIn.getWidth(), imIn.getHeight()) * (5/100); // Taille minimale d'une région pour la subdivision, 1% de la taille de l'image
+	int grilleMin = 2; // Nombre de subdivisions minimum
 
-    mosaique2(imIn, imOut, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, tailleMin);
+	//mosaique(imIn, imOut, 0.01);
+    mosaique2(imIn, imOut, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, tailleMin, grilleMin);
 
 	imOut.save("test.ppm");
 }
