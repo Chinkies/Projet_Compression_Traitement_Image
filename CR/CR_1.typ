@@ -78,7 +78,7 @@
     stroke: aqua,
     inset: 10pt,
     width: 100%,
-    [Tommy-Verdi ORAVEC],
+    [Tommy-Verdi ORAVEC, Lucas PAULO],
   )
 
 = Mosaïque d'images avec subdivision de l'espace
@@ -87,7 +87,13 @@ Pour notre première version de la mosaïque, nous avons subdivisé récursiveme
 
 Une fois le seuil de variance atteint, on sélectionne l'imagette ayant la moyenne de couleur la plus proche de la moyenne de la zone à remplacer. Nous avons utilisé la distance euclidienne dans l'espace RGB pour mesurer la proximité entre les couleurs.
 
----_Rajouter ici les infos sur la base de données d'imagettes utilisée_---
+= Base de données d'imagettes
+
+Afin de générer des mosaïques d'images, il nous fallait une banque de données d'images de petite taille.
+
+Nous avons utilisé le jeu de données CIFAR-10, une partition labélisée de 80 millions tiny images, composée de 60000 images destinée à l'entraînement d'IA. Ces images sont stockées dans des fichiers bin sous le format : 1 ligne par image avec 1 octet pour le label, 1024 octets par la composante rouge, puis verte, puis bleu soit 3073 octets par image.
+
+Nous chargeons les moyennes de couleurs de l'image ainsi que leur position (index) dans le fichier afin de les utiliser dans le programme.
 
 
 #figure(
