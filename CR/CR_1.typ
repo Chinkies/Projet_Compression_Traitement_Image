@@ -78,7 +78,7 @@
     stroke: aqua,
     inset: 10pt,
     width: 100%,
-    [Tommy-Verdi ORAVEC, Lucas PAULO],
+    [Tommy-Verdi ORAVEC, Lucas PAULO, Victor ONIC],
   )
 
 = Mosaïque d'images avec subdivision de l'espace
