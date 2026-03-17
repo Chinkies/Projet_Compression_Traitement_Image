@@ -57,4 +57,4 @@ struct ImgInfo {
 
 extern std::vector<ImgInfo> imgInfos;
 void initImgInfos();
-void initImgInfosFromBin(const std::string& _filePath);
+void initImgInfosFromBin(const std::string& _path);

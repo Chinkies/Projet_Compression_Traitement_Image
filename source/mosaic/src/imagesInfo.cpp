@@ -51,45 +51,66 @@ void initImgInfos() {
 // - 1024 octets pour R, 1024 G, 1024 B
 // - soit 3073 octets par images et 3072 sans le label
 
-void initImgInfosFromBin(const std::string& _filePath)
+void initImgInfosFromBin(const std::string& _path)
 {
     imgInfos.clear();
 
-    std::ifstream file(_filePath, std::ios::binary);
-    if (!file.is_open()){
-        std::cerr << "Fichier impossible à ouvrir" << std::endl;
+    if (!fs::exists(_path) || !fs::is_directory(_path)) {
         return;
     }
 
-    int side = 32;
-    int area = side * side;
-    // taile de la ligne (label + area * 3)
-    int imgSize = 1 + area * 3;
+    int total = 0;
 
-    std::vector<unsigned char> currentImg(imgSize);
-    int id = 0;
+    for (const auto& entry : fs::directory_iterator(_path)) {
+        
+        int id = 0;
 
-    while (file.read(reinterpret_cast<char*>(currentImg.data()), imgSize))
-    {
-        ImgInfo currentImgInfo;
-
-        currentImgInfo.name = _filePath + ":" + std::to_string(id);
-
-        for (int i = 0; i < area; ++i)
-        {
-            currentImgInfo.R += currentImg[1 + i];
-            currentImgInfo.G += currentImg[1 + area + i];
-            currentImgInfo.B += currentImg[1 + 2 * area + i];
+        if (!entry.is_regular_file()) {
+            continue;
         }
 
-        currentImgInfo /= static_cast<int>(area);
-        imgInfos.push_back(currentImgInfo);
+        std::string filePath = entry.path().string();
 
-        id++;
+        std::ifstream file(filePath, std::ios::binary);
+        if (!file.is_open()){
+            std::cerr << "Fichier impossible à ouvrir" << std::endl;
+            return;
+        }
+
+        int side = 32;
+        int area = side * side;
+        // taile de la ligne (label + area * 3)
+        int imgSize = 1 + area * 3;
+
+        std::vector<unsigned char> currentImg(imgSize);
+
+        while (file.read(reinterpret_cast<char*>(currentImg.data()), imgSize))
+        {
+            ImgInfo currentImgInfo;
+
+            currentImgInfo.name = filePath + ":" + std::to_string(id);
+
+            for (int i = 0; i < area; ++i)
+            {
+                currentImgInfo.R += currentImg[1 + i];
+                currentImgInfo.G += currentImg[1 + area + i];
+                currentImgInfo.B += currentImg[1 + 2 * area + i];
+            }
+
+            currentImgInfo /= static_cast<int>(area);
+            imgInfos.push_back(currentImgInfo);
+
+            id++;
+        }
+
+        file.close();
+
+        std::cout << "Image : " << id << " from " 
+            << filePath << " loaded successfully" << std::endl;
+
+        total += id;
     }
 
-    file.close();
-
-    std::cout << "Image : " << id << " from " 
-        << _filePath << " loaded successfully" << std::endl;
+    std::cout << "\nA total of " << total << " image from " 
+        << _path << " loaded successfully" << std::endl;
 }
