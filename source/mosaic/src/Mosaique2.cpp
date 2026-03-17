@@ -27,24 +27,31 @@ ImageBase get_corresponding_image_old(bool color, int m) {
 }
 
 // version qui traite séparéments les composantes R, G, B plutôt que de faire une moyenne des 3
-ImageBase get_corresponding_image(bool color, int R, int G, int B) {
+ImageBase get_corresponding_image(bool color, bool *used, int R, int G, int B) {
 
     int dR = 255, dG = 255, dB = 255;
     int bestIdx = -1;
-    int idx = -1;
+    int idx = 0;
     for (const auto& imgInfo : imgInfos) {
-        idx++;
 
         //TODO : ne fonctionne qu'avec des images couleurs
         if (color) {
-            if (std::abs(imgInfo.B - B) < dB && std::abs(imgInfo.G - G) < dG && std::abs(imgInfo.R - R) < dR) {
+            if (!used[idx] && std::abs(imgInfo.B - B) < dB && std::abs(imgInfo.G - G) < dG && std::abs(imgInfo.R - R) < dR) {
                 dB = std::abs(imgInfo.B - B);
                 dG = std::abs(imgInfo.G - G);
                 dR = std::abs(imgInfo.R - R);
                 bestIdx = idx;
             }
         } 
+        idx++;
     }
+
+    if (bestIdx == -1) {
+        std::cout << "Aucune image correspondante trouvée pour R=" << R << " G=" << G << " B=" << B << std::endl;
+        return ImageBase();
+    }
+
+    used[bestIdx] = true;
 
     std::string path = imgInfos[bestIdx].getBinPath();
     int id = imgInfos[bestIdx].getBinId();
@@ -53,8 +60,6 @@ ImageBase get_corresponding_image(bool color, int R, int G, int B) {
     //img.load(const_cast<char*>(imgInfo.name.c_str()));
     img.loadFromBin(const_cast<char*>(path.c_str()), id);
     return img;
-
-    return ImageBase();
 }
 
 ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight) {
@@ -79,11 +84,17 @@ ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight) {
 */
 
 void mosaique(ImageBase &imIn, ImageBase &imOut, float percent) {
+    bool used[imgInfos.size()];
+    for (size_t i = 0; i < imgInfos.size(); ++i) {
+        used[i] = false;
+    }
     int width = imIn.getWidth();
     int height = imIn.getHeight();
 
     int gridWidth = static_cast<int>(width * percent);
     int gridHeight = static_cast<int>(height * percent);
+
+    std::cout << "Number of cells : " << (width / gridWidth) * (height / gridHeight) << std::endl;
 
     if (gridWidth <= 0) gridWidth = 1;
     if (gridHeight <= 0) gridHeight = 1;
@@ -111,7 +122,7 @@ void mosaique(ImageBase &imIn, ImageBase &imOut, float percent) {
             G /= (tileWidth * tileHeight);
             B /= (tileWidth * tileHeight);
 
-            ImageBase imagette = get_corresponding_image(imIn.getColor(), R, G, B);
+            ImageBase imagette = get_corresponding_image(imIn.getColor(), used, R, G, B);
             if (!imagette.getValidity()) {
                 continue;
             }
@@ -129,6 +140,8 @@ void mosaique(ImageBase &imIn, ImageBase &imOut, float percent) {
 
 void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
     int regionWidth, int regionHeight, int seuilVariance, int tailleMin, int grilleMin) {
+
+    bool used[imgInfos.size()] = {false};
 
     int demiWidth = regionWidth / 2;
     int demiHeight = regionHeight / 2;
@@ -212,7 +225,7 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
         mosaique2(imIn, imOut, x0, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1);
     } else {
         // Mettre l'image correspondante dans imOut
-        ImageBase img = get_corresponding_image(imIn.getColor(), R1, G1, B1);
+        ImageBase img = get_corresponding_image(imIn.getColor(), used, R1, G1, B1);
         if (img.getValidity()) {
             ImageBase resized = resizeImage(img, demiWidth, demiHeight);
             for (int y = 0; y < demiHeight; ++y) {
@@ -229,7 +242,7 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
         mosaique2(imIn, imOut, x0 + demiWidth, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1);
     } else {
         // Mettre l'image correspondante dans imOut
-        ImageBase img = get_corresponding_image(imIn.getColor(), R2, G2, B2);
+        ImageBase img = get_corresponding_image(imIn.getColor(), used, R2, G2, B2);
         if (img.getValidity()) {
             ImageBase resized = resizeImage(img, demiWidth, demiHeight);
             for (int y = 0; y < demiHeight; ++y) {
@@ -246,7 +259,7 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
         mosaique2(imIn, imOut, x0, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1);
     } else {
         // Mettre l'image correspondante dans imOut
-        ImageBase img = get_corresponding_image(imIn.getColor(), R3, G3, B3);
+        ImageBase img = get_corresponding_image(imIn.getColor(), used, R3, G3, B3);
         if (img.getValidity()) {
             ImageBase resized = resizeImage(img, demiWidth, demiHeight);
             for (int y = 0; y < demiHeight; ++y) {
@@ -263,7 +276,7 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
         mosaique2(imIn, imOut, x0 + demiWidth, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1);
     } else {
         // Mettre l'image correspondante dans imOut
-        ImageBase img = get_corresponding_image(imIn.getColor(), R4, G4, B4);
+        ImageBase img = get_corresponding_image(imIn.getColor(), used, R4, G4, B4);
         if (img.getValidity()) {
             ImageBase resized = resizeImage(img, demiWidth, demiHeight);
             for (int y = 0; y < demiHeight; ++y) {
