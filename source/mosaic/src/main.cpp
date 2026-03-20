@@ -29,8 +29,12 @@ int main(int argc, char **argv) {
     int tailleMin = std::max(imIn.getWidth(), imIn.getHeight()) * (5/100); // Taille minimale d'une région pour la subdivision, 1% de la taille de l'image
 	int grilleMin = 2; // Nombre de subdivisions minimum
 
-	mosaique(imIn, imOut, 0.005);
+	mosaique(imIn, imOut, 0.01, false);
     //mosaique2(imIn, imOut, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, tailleMin, grilleMin);
 
-	imOut.save("test.ppm");
+	imOut.save("mosaique1.ppm");
+
+    //mosaique2(imIn, imOut, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, tailleMin, grilleMin);
+
+	//imOut.save("mosaique2.ppm");
 }

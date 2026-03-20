@@ -27,39 +27,69 @@ ImageBase get_corresponding_image_old(bool color, int m) {
 }
 
 // version qui traite séparéments les composantes R, G, B plutôt que de faire une moyenne des 3
-ImageBase get_corresponding_image(bool color, bool *used, int R, int G, int B) {
+ImageBase get_corresponding_image(bool color, bool *used, int R, int G, int B, bool repetition) {
 
     int dR = 255, dG = 255, dB = 255;
     int bestIdx = -1;
     int idx = 0;
-    for (const auto& imgInfo : imgInfos) {
+    
+    if (!repetition){
+        for (const auto& imgInfo : imgInfos) {
 
-        //TODO : ne fonctionne qu'avec des images couleurs
-        if (color) {
-            if (!used[idx] && std::abs(imgInfo.B - B) < dB && std::abs(imgInfo.G - G) < dG && std::abs(imgInfo.R - R) < dR) {
-                dB = std::abs(imgInfo.B - B);
-                dG = std::abs(imgInfo.G - G);
-                dR = std::abs(imgInfo.R - R);
-                bestIdx = idx;
-            }
-        } 
-        idx++;
+            //TODO : ne fonctionne qu'avec des images couleurs
+            if (color) {
+                if (!used[idx] && std::abs(imgInfo.B - B) < dB && std::abs(imgInfo.G - G) < dG && std::abs(imgInfo.R - R) < dR) {
+                    dB = std::abs(imgInfo.B - B);
+                    dG = std::abs(imgInfo.G - G);
+                    dR = std::abs(imgInfo.R - R);
+                    bestIdx = idx;
+                }
+            } 
+            idx++;
+        }
+
+        if (bestIdx == -1) {
+            std::cout << "Aucune image correspondante trouvée pour R=" << R << " G=" << G << " B=" << B << std::endl;
+            return ImageBase();
+        }
+
+        used[bestIdx] = true;
+
+        std::string path = imgInfos[bestIdx].getBinPath();
+        int id = imgInfos[bestIdx].getBinId();
+
+        ImageBase img;
+        //img.load(const_cast<char*>(imgInfo.name.c_str()));
+        img.loadFromBin(const_cast<char*>(path.c_str()), id);
+        return img;
+    } else {
+        for (const auto& imgInfo : imgInfos) {
+
+            //TODO : ne fonctionne qu'avec des images couleurs
+            if (color) {
+                if (std::abs(imgInfo.B - B) < dB && std::abs(imgInfo.G - G) < dG && std::abs(imgInfo.R - R) < dR) {
+                    dB = std::abs(imgInfo.B - B);
+                    dG = std::abs(imgInfo.G - G);
+                    dR = std::abs(imgInfo.R - R);
+                    bestIdx = idx;
+                }
+            } 
+            idx++;
+        }
+
+        if (bestIdx == -1) {
+            std::cout << "Aucune image correspondante trouvée pour R=" << R << " G=" << G << " B=" << B << std::endl;
+            return ImageBase();
+        }
+
+        std::string path = imgInfos[bestIdx].getBinPath();
+        int id = imgInfos[bestIdx].getBinId();
+
+        ImageBase img;
+        //img.load(const_cast<char*>(imgInfo.name.c_str()));
+        img.loadFromBin(const_cast<char*>(path.c_str()), id);
+        return img;
     }
-
-    if (bestIdx == -1) {
-        std::cout << "Aucune image correspondante trouvée pour R=" << R << " G=" << G << " B=" << B << std::endl;
-        return ImageBase();
-    }
-
-    used[bestIdx] = true;
-
-    std::string path = imgInfos[bestIdx].getBinPath();
-    int id = imgInfos[bestIdx].getBinId();
-
-    ImageBase img;
-    //img.load(const_cast<char*>(imgInfo.name.c_str()));
-    img.loadFromBin(const_cast<char*>(path.c_str()), id);
-    return img;
 }
 
 ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight) {
@@ -83,7 +113,7 @@ ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight) {
     Malheureusement je n'ai pas de base de donnée d'image pour pouvoir tester.
 */
 
-void mosaique(ImageBase &imIn, ImageBase &imOut, float percent) {
+void mosaique(ImageBase &imIn, ImageBase &imOut, float percent, bool repetion) {
     bool used[imgInfos.size()];
     for (size_t i = 0; i < imgInfos.size(); ++i) {
         used[i] = false;
@@ -122,7 +152,7 @@ void mosaique(ImageBase &imIn, ImageBase &imOut, float percent) {
             G /= (tileWidth * tileHeight);
             B /= (tileWidth * tileHeight);
 
-            ImageBase imagette = get_corresponding_image(imIn.getColor(), used, R, G, B);
+            ImageBase imagette = get_corresponding_image(imIn.getColor(), used, R, G, B, repetion);
             if (!imagette.getValidity()) {
                 continue;
             }
@@ -139,7 +169,7 @@ void mosaique(ImageBase &imIn, ImageBase &imOut, float percent) {
 }
 
 void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
-    int regionWidth, int regionHeight, int seuilVariance, int tailleMin, int grilleMin) {
+    int regionWidth, int regionHeight, int seuilVariance, int tailleMin, int grilleMin, bool repetition) {
 
     bool used[imgInfos.size()] = {false};
 
@@ -222,7 +252,7 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
 
     //TODO : à corriger 
     if ((v1 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) || grilleMin > 0) {
-        mosaique2(imIn, imOut, x0, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1);
+        mosaique2(imIn, imOut, x0, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
         ImageBase img = get_corresponding_image(imIn.getColor(), used, R1, G1, B1);
@@ -239,7 +269,7 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
     }
 
     if ((v2 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) || grilleMin > 0) {
-        mosaique2(imIn, imOut, x0 + demiWidth, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1);
+        mosaique2(imIn, imOut, x0 + demiWidth, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
         ImageBase img = get_corresponding_image(imIn.getColor(), used, R2, G2, B2);
@@ -256,7 +286,7 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
     }
 
     if ((v3 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) || grilleMin > 0) {
-        mosaique2(imIn, imOut, x0, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1);
+        mosaique2(imIn, imOut, x0, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
         ImageBase img = get_corresponding_image(imIn.getColor(), used, R3, G3, B3);
@@ -273,7 +303,7 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
     }
 
     if ((v4 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) || grilleMin > 0) {
-        mosaique2(imIn, imOut, x0 + demiWidth, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1);
+        mosaique2(imIn, imOut, x0 + demiWidth, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
         ImageBase img = get_corresponding_image(imIn.getColor(), used, R4, G4, B4);
@@ -289,3 +319,7 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
         }
     }
 }
+
+// TO DO : intégrer un masque pour la découpe de l'image, pour permettre de faire des formes différentes.
+// Detection des edges pour les imagettes
+// Super-pixel
