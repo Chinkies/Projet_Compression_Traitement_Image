@@ -169,9 +169,7 @@ void mosaique(ImageBase &imIn, ImageBase &imOut, float percent, bool repetion) {
 }
 
 void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
-    int regionWidth, int regionHeight, int seuilVariance, int tailleMin, int grilleMin, bool repetition) {
-
-    bool used[imgInfos.size()] = {false};
+    int regionWidth, int regionHeight, int seuilVariance, int tailleMin, int grilleMin, bool used[], bool repetition) {
 
     int demiWidth = regionWidth / 2;
     int demiHeight = regionHeight / 2;
@@ -186,10 +184,6 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
     int R3 = 0, G3 = 0, B3 = 0;
     int R4 = 0, G4 = 0, B4 = 0;
 
-    //TODO : à corriger m1 etc sont des int pour potentiellement des RGB
-    //Donc la moyenne obtenue correspond au total (r+g+b) / 3
-    //Alors que je pense que pour comparer il faut vérifier indépendament
-    //les trois composantes individuellement
     for (int y = 0; y < demiHeight; ++y) {
         for (int x = 0; x < demiWidth; ++x) {
             //int idxIn = (y0 + y) * imIn.getWidth() + (x0 + x);
@@ -251,11 +245,11 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
     float v4 = Traitement::variance(r4);
 
     //TODO : à corriger 
-    if ((v1 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) || grilleMin > 0) {
-        mosaique2(imIn, imOut, x0, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, repetition);
+    if ((v1 > seuilVariance || grilleMin > 0) && demiWidth >= tailleMin && demiHeight >= tailleMin) {
+        mosaique2(imIn, imOut, x0, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
-        ImageBase img = get_corresponding_image(imIn.getColor(), used, R1, G1, B1);
+        ImageBase img = get_corresponding_image(imIn.getColor(), used, R1, G1, B1, repetition);
         if (img.getValidity()) {
             ImageBase resized = resizeImage(img, demiWidth, demiHeight);
             for (int y = 0; y < demiHeight; ++y) {
@@ -268,11 +262,11 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
         }
     }
 
-    if ((v2 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) || grilleMin > 0) {
-        mosaique2(imIn, imOut, x0 + demiWidth, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, repetition);
+    if ((v2 > seuilVariance || grilleMin > 0) && demiWidth >= tailleMin && demiHeight >= tailleMin) {
+        mosaique2(imIn, imOut, x0 + demiWidth, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
-        ImageBase img = get_corresponding_image(imIn.getColor(), used, R2, G2, B2);
+        ImageBase img = get_corresponding_image(imIn.getColor(), used, R2, G2, B2, repetition);
         if (img.getValidity()) {
             ImageBase resized = resizeImage(img, demiWidth, demiHeight);
             for (int y = 0; y < demiHeight; ++y) {
@@ -285,11 +279,11 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
         }
     }
 
-    if ((v3 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) || grilleMin > 0) {
-        mosaique2(imIn, imOut, x0, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, repetition);
+    if ((v3 > seuilVariance || grilleMin > 0) && demiWidth >= tailleMin && demiHeight >= tailleMin) {
+        mosaique2(imIn, imOut, x0, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
-        ImageBase img = get_corresponding_image(imIn.getColor(), used, R3, G3, B3);
+        ImageBase img = get_corresponding_image(imIn.getColor(), used, R3, G3, B3, repetition);
         if (img.getValidity()) {
             ImageBase resized = resizeImage(img, demiWidth, demiHeight);
             for (int y = 0; y < demiHeight; ++y) {
@@ -302,11 +296,11 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
         }
     }
 
-    if ((v4 > seuilVariance && demiWidth >= tailleMin && demiHeight >= tailleMin) || grilleMin > 0) {
-        mosaique2(imIn, imOut, x0 + demiWidth, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, repetition);
+    if ((v4 > seuilVariance || grilleMin > 0) && demiWidth >= tailleMin && demiHeight >= tailleMin) {
+        mosaique2(imIn, imOut, x0 + demiWidth, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
-        ImageBase img = get_corresponding_image(imIn.getColor(), used, R4, G4, B4);
+        ImageBase img = get_corresponding_image(imIn.getColor(), used, R4, G4, B4, repetition);
         if (img.getValidity()) {
             ImageBase resized = resizeImage(img, demiWidth, demiHeight);
             for (int y = 0; y < demiHeight; ++y) {
@@ -323,3 +317,4 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
 // TO DO : intégrer un masque pour la découpe de l'image, pour permettre de faire des formes différentes.
 // Detection des edges pour les imagettes
 // Super-pixel
+// Second pass pour swap
