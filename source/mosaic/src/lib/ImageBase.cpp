@@ -293,7 +293,7 @@ Pixel ImageBase::getPixel(int x, int y) {
 		pixel.G = data[index + 1];
 		pixel.B = data[index + 2];
 	} else {
-		pixel.R = pixel.G = pixel.B = data[index];
+		pixel.N = data[index];
 	}
 	return pixel;
 }

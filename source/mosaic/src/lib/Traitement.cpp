@@ -610,3 +610,15 @@ float Traitement::variance(ImageBase &img) {
     return static_cast<float>(variance);
 }
 
+ImageBase Traitement::resizeImage(ImageBase& img, int newWidth, int newHeight) {
+    ImageBase resized(newWidth, newHeight, img.getColor());
+    for (int y = 0; y < newHeight; ++y) {
+        for (int x = 0; x < newWidth; ++x) {
+            int srcX = x * img.getWidth() / newWidth;
+            int srcY = y * img.getHeight() / newHeight;
+            resized.setPixelTo(x, y, img.getPixel(srcX, srcY));
+        }
+    }
+    return resized;
+}
+

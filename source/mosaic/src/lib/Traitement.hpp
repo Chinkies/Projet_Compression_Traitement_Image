@@ -23,4 +23,5 @@ class Traitement {
         static ImageBase gradient_image(ImageBase &img);
         static ImageBase hysteresis(ImageBase &img, int SB, int SH);
         static float variance(ImageBase &img);
+        static ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight);
 };
