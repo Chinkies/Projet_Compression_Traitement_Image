@@ -112,14 +112,64 @@ rectangle([
 Nous avonc ajouté une mosaïque d'image dont la grille est remplacé par des superpixel afin de modifier
 les imagettes placées via un masque pour qu'elles épousent mieux les contours dans l'image.
 
+#figure(
+rectangle([
+  #[
+    #set text(size: 11pt)
+    #grid(
+      columns: (auto),
+      rows: (auto, 1em),
+      row-gutter: (1em),
+      image("SnicPolygon.png", width: 80%),
+      [Comparaison de l'algorithme SNIC et SNIC Polygons]
+    )
+ ]
+], fill: silver, stroke: black)
+)
+
 == Génération d'une grille de superpixel
 
 Pour générer la grille de superpixel, nous utilisons l'algorithme SNIC [1] plus précisement sa version polygone afin d'obtenir des superpixels ayant des bords plus lisse pour éviter l'effet dentelé pouvant être observer sur le résultat ci dessous. Cet effet rendrait plus difficile la compréhension des imagettes placées car elles seraient trop déformées.
+
+#figure(
+rectangle([
+  #[
+    #set text(size: 11pt)
+    #grid(
+      columns: (auto, auto),
+      rows: (auto, 1em),
+      row-gutter: (1em),
+      image("wpuech.jpg", width: 75%),
+      image("superPixelFondImage.png", width: 75%),
+      [Image originale],
+      [Grille de superpixels obtenue],
+    )
+ ]
+], fill: silver, stroke: black)
+)
 
 == Remplissage de la mosaïque
 
 Afin de remplir la grille de superpixels obtenu, nous devons, une fois l'imagette idéal trouvé, lui appliqué un masque afin qu'elle remplisse uniquement la zone du superpixel. On applique cette opération sur tout les superpixel pour obtenir le résultat final.
 
+#figure(
+rectangle([
+  #[
+    #set text(size: 11pt)
+    #grid(
+      columns: (auto, auto, auto),
+      rows: (auto, 1em),
+      row-gutter: (1em),
+      image("wpuech.jpg", width: 75%),
+      image("superPixelFondImage.png", width: 75%),
+      image("mosaiqueSuperPixel.png", width: 75%),
+      [Image originale],
+      [Grille de superpixels obtenue],
+      [Mosaïque générée],
+    )
+ ]
+], fill: silver, stroke: black)
+)
 = Références
 
 [1] - Superpixels and Polygons using Simple Non-Iterative Clustering, Radhakrishna Achanta, Süsstrunk, Sabine, 2017
