@@ -1,4 +1,5 @@
 #include "Mosaique2.hpp"
+#include "../../super_pixel/src/snic_mex.hpp"
 
 //TODO : faire en sorte de trouver l'image la plus proche et non la première
 ImageBase get_corresponding_image_old(bool color, int m) {
@@ -318,3 +319,131 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
 // Detection des edges pour les imagettes
 // Super-pixel
 // Second pass pour swap
+
+void mosaiqueSNICPolygone(ImageBase &imIn, ImageBase &imOut, int numberSuperPixel, double compactness, bool repetition)
+{
+    int width   = imIn.getWidth();
+    int height  = imIn.getHeight();
+    int size    = width * height;
+
+    // === On converti les données de ImageBase au format lab utilisé par le code SNIC ===
+
+    // On récupère les composantes rgb de l'image
+    int* rImIn = new int[size];
+    int* gImIn = new int[size];
+    int* bImIn = new int[size];
+
+    int index;
+    Pixel p;
+
+    for (int y = 0; y < height; ++y){
+        for (int x = 0; x < width; ++x)
+        {
+            index = y * width + x;
+            p = imIn.getPixel(x, y);
+
+            rImIn[index] = p.R;
+            gImIn[index] = p.G;
+            bImIn[index] = p.B;
+        }
+    }
+
+    // On les convertits en lab
+    double* lImInLAB = new double[size];
+    double* aImInLAB = new double[size];
+    double* bImInLAB = new double[size];
+
+    rgbtolab(rImIn, gImIn, bImIn, size, lImInLAB, aImInLAB, bImInLAB);
+
+    // === On utilise le code SNIC pour obtenir les superpixels de l'image ===
+    //     - Le résultat de la fonction est stocké dans labels
+    //     - labels[i] donne le superpixel auquel appartient le pixel i
+    //     - nbrSuperPixel est le nombre total final de superpixel obtenu
+    //       ce nombre peut être différent du nombre demandé
+
+    int* labels = new int[size];
+    int nbrSuperPixel = 0;
+
+    runSNIC(lImInLAB, aImInLAB, bImInLAB, width, height, labels, &nbrSuperPixel, numberSuperPixel, compactness);
+
+    // === On traite et stock les valeurs obtenues dans un vecteur de superpixel ===
+
+    std::vector<SuperPixel> allSuperPixel(nbrSuperPixel);
+
+    int currentLabel;
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x)
+        {
+            index = y * width + x;
+            currentLabel = labels[index];
+
+            if (currentLabel >= 0 && currentLabel < nbrSuperPixel) 
+            {
+                p = imIn.getPixel(x, y);
+                
+                allSuperPixel[currentLabel].minX = std::min(allSuperPixel[currentLabel].minX, x);
+                allSuperPixel[currentLabel].minY = std::min(allSuperPixel[currentLabel].minY, y);
+                allSuperPixel[currentLabel].maxX = std::max(allSuperPixel[currentLabel].maxX, x);
+                allSuperPixel[currentLabel].maxY = std::max(allSuperPixel[currentLabel].maxY, y);
+
+                allSuperPixel[currentLabel].sumR += p.R;
+                allSuperPixel[currentLabel].sumG += p.G;
+                allSuperPixel[currentLabel].sumB += p.B;
+
+                allSuperPixel[currentLabel].nbrPixel++;
+            }
+        }
+    }
+
+    // === On construit la mosaïque à partir des valeurs obtenues et traitées
+
+    bool* used = new bool[imgInfos.size()](); // faudra utiliser ce genre de déclaration si la base de données devient immense
+
+    int meansR, meansG, meansB, boundingBoxWidth, boundingBoxHeight, imageX, imageY;
+    ImageBase imagette, resized;
+    bool color = imIn.getColor();
+
+
+    for (int i = 0; i < nbrSuperPixel; ++i)
+    {
+        // si le superpixel ne contient aucun pixel, on passe au suivant
+        if (allSuperPixel[i].nbrPixel == 0) continue;
+
+        meansR = allSuperPixel[i].sumR / allSuperPixel[i].nbrPixel;
+        meansG = allSuperPixel[i].sumG / allSuperPixel[i].nbrPixel;
+        meansB = allSuperPixel[i].sumB / allSuperPixel[i].nbrPixel;
+
+        boundingBoxWidth = allSuperPixel[i].maxX - allSuperPixel[i].minX + 1;
+        boundingBoxHeight = allSuperPixel[i].maxY - allSuperPixel[i].minY + 1;
+        
+        imagette = get_corresponding_image(color, used, meansR, meansG, meansB, repetition);
+        
+        if (!imagette.getValidity()) continue;
+
+        resized = resizeImage(imagette, boundingBoxWidth, boundingBoxHeight);
+        
+        // on met le masque
+        for (int y = 0; y < boundingBoxHeight; ++y){
+            for (int x = 0; x < boundingBoxWidth; ++x)
+            {
+                imageX = allSuperPixel[i].minX + x;
+                imageY = allSuperPixel[i].minY + y;
+
+                if (imageX >= 0 && imageX < width && imageY >= 0 && imageY < height)
+                {
+                    index = imageY * width + imageX;
+                    if (labels[index] == i)
+                    {
+                        imOut.setPixelTo(imageX, imageY, resized.getPixel(x, y));
+                    }
+                }
+            }
+        }
+    }
+
+    delete[] rImIn; delete[] gImIn; delete[] bImIn;
+    delete[] lImInLAB; delete[] aImInLAB; delete[] bImInLAB;
+    delete[] labels;
+    delete[] used;
+}

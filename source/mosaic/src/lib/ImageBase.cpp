@@ -292,8 +292,10 @@ Pixel ImageBase::getPixel(int x, int y) {
 		pixel.R = data[index];
 		pixel.G = data[index + 1];
 		pixel.B = data[index + 2];
+		pixel.color = true;
 	} else {
 		pixel.N = data[index];
+		pixel.color = false;
 	}
 	return pixel;
 }

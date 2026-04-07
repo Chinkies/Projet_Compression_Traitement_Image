@@ -7,3 +7,17 @@ http://vision.gel.ulaval.ca/~jflalonde/cours/4105/h17/tps/results/projet/1110630
 https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_segmentations.html
 
 https://lezoray.users.greyc.fr/Students/Dallocchio_MS_2022.pdf
+
+https://www.epfl.ch/labs/ivrl/research/snic-superpixels/
+
+https://www.epfl.ch/labs/ivrl/research/snic-superpixels/
+
+https://openaccess.thecvf.com/content_cvpr_2017/papers/Achanta_Superpixels_and_Polygons_CVPR_2017_paper.pdf
+
+https://rolfsimoes.github.io/snic/
+
+https://darshita1405.medium.com/superpixels-and-slic-6b2d8a6e4f08
+
+https://www.iro.umontreal.ca/~mignotte/IFT6150/Articles/SLIC_Superpixels.pdf
+
+https://github.com/alecjacobson/matlab/blob/master/extern/include/mex.h

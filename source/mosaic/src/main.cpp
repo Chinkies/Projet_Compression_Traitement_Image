@@ -59,15 +59,17 @@ int main(int argc, char **argv) {
 	int grilleMin = 2; // Nombre de subdivisions minimum
 
 	//mosaique(imIn, imOut, 0.02, false);
+    mosaiqueSNICPolygone(imIn, imOut, 4000, 30, false);
+    imOut.save("mosaiqueSuperPixel.ppm");
 
-    bool used[imgInfos.size()] = {false};
+    /* bool used[imgInfos.size()] = {false};
     //mosaique2(imIn, imOut, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, 16, grilleMin, used, false);
 	ImageBase mask;
 
 	mask.load("coeur.pgm");
 
 	ImageBase cut = cut_image(imIn, mask);
-	cut.save("cut.ppm");
+	cut.save("cut.ppm"); */
 	//float PSNR = calculatePSNR(imIn, imOut);
 	//std::cout << "PSNR : " << PSNR << " dB" << std::endl;
 

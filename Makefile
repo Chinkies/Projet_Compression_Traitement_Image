@@ -1,15 +1,16 @@
 PROJECT_ROOT := .
-SRC_DIR := $(PROJECT_ROOT)/source/mosaic/src
-LIB_DIR := $(SRC_DIR)/lib
+MOSAIC_DIR := $(PROJECT_ROOT)/source/mosaic/src
+SUPERPIXEL_DIR := $(PROJECT_ROOT)/source/super_pixel/src
+LIB_DIR := $(MOSAIC_DIR)/lib
 BUILD_DIR := $(PROJECT_ROOT)/build/mosaic
 BIN_DIR := $(PROJECT_ROOT)/bin
 TARGET := $(BIN_DIR)/mosaic
 
 CXX := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -O2
-CPPFLAGS := -I$(SRC_DIR) -I$(LIB_DIR)
+CPPFLAGS := -I$(MOSAIC_DIR) -I$(LIB_DIR) -I$(SUPERPIXEL_DIR)
 
-SRCS := $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(LIB_DIR)/*.cpp)
+SRCS := $(wildcard $(MOSAIC_DIR)/*.cpp) $(wildcard $(LIB_DIR)/*.cpp) $(wildcard $(SUPERPIXEL_DIR)/*.cpp)
 OBJS := $(patsubst $(PROJECT_ROOT)/%.cpp,$(BUILD_DIR)/%.o,$(SRCS))
 DEPS := $(OBJS:.o=.d)
 

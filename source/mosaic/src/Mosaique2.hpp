@@ -11,3 +11,4 @@ ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight);
 void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
     int regionWidth, int regionHeight, int seuilVariance, int tailleMin, int grilleMin, bool used[], bool repetition = false);
 void mosaique(ImageBase &imIn, ImageBase &imOut, float percent = 0.05, bool repetion = false);
+void mosaiqueSNICPolygone(ImageBase &imIn, ImageBase &imOut, int numberSuperPixel, double compactness, bool repetition);
