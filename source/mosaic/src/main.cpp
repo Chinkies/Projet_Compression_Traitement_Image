@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
 	int grilleMin = 2; // Nombre de subdivisions minimum
 
 	//mosaique(imIn, imOut, 0.02, false);
-    mosaiqueSNICPolygone(imIn, imOut, 4000, 30, false);
+    mosaiqueSNICPolygon(imIn, imOut, 4000, 30, false);
     imOut.save("mosaiqueSuperPixel.ppm");
 
     /* bool used[imgInfos.size()] = {false};

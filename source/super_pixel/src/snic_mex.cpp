@@ -33,6 +33,10 @@
  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+ @inproceedings{snic_cvpr17, author = {Achanta, Radhakrishna and Susstrunk, Sabine},
+ title = {Superpixels and Polygons using Simple Non-Iterative Clustering},
+ booktitle = {IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, year = {2017} }
  */
 
 #include <snic_mex.hpp>

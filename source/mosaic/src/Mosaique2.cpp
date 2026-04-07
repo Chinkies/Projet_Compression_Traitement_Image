@@ -320,7 +320,7 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
 // Super-pixel
 // Second pass pour swap
 
-void mosaiqueSNICPolygone(ImageBase &imIn, ImageBase &imOut, int numberSuperPixel, double compactness, bool repetition)
+void mosaiqueSNICPolygon(ImageBase &imIn, ImageBase &imOut, int numberSuperPixel, double compactness, bool repetition)
 {
     int width   = imIn.getWidth();
     int height  = imIn.getHeight();
