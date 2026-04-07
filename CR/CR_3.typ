@@ -119,3 +119,7 @@ Pour générer la grille de superpixel, nous utilisons l'algorithme SNIC [1] plu
 == Remplissage de la mosaïque
 
 Afin de remplir la grille de superpixels obtenu, nous devons, une fois l'imagette idéal trouvé, lui appliqué un masque afin qu'elle remplisse uniquement la zone du superpixel. On applique cette opération sur tout les superpixel pour obtenir le résultat final.
+
+= Références
+
+[1] - Superpixels and Polygons using Simple Non-Iterative Clustering, Radhakrishna Achanta, Süsstrunk, Sabine, 2017
