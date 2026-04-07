@@ -106,3 +106,16 @@ rectangle([
 ], fill: silver, stroke: black)
 )
 \
+
+= Jigsaw mosaïque via superpixel
+
+Nous avonc ajouté une mosaïque d'image dont la grille est remplacé par des superpixel afin de modifier
+les imagettes placées via un masque pour qu'elles épousent mieux les contours dans l'image.
+
+== Génération d'une grille de superpixel
+
+Pour générer la grille de superpixel, nous utilisons l'algorithme SNIC [1] plus précisement sa version polygone afin d'obtenir des superpixels ayant des bords plus lisse pour éviter l'effet dentelé pouvant être observer sur le résultat ci dessous. Cet effet rendrait plus difficile la compréhension des imagettes placées car elles seraient trop déformées.
+
+== Remplissage de la mosaïque
+
+Afin de remplir la grille de superpixels obtenu, nous devons, une fois l'imagette idéal trouvé, lui appliqué un masque afin qu'elle remplisse uniquement la zone du superpixel. On applique cette opération sur tout les superpixel pour obtenir le résultat final.
