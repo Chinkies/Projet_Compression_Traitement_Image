@@ -5,10 +5,29 @@
 #include "lib/Traitement.hpp"
 #include "imagesInfo.hpp"
 
-ImageBase get_corresponding_image_old(bool color, int m);
-ImageBase get_corresponding_image(bool color, bool *used, int R, int G, int B, bool repetition = false);
+struct Tile{
+    int x, y; 
+    int width, height;
+    int imgInfoIDx;
+
+    Tile &operator=(const Tile &tile) {
+        this->x = tile.x;
+        this->y = tile.y;
+        this->width = tile.width;
+        this->height = tile.height;
+        this->imgInfoIDx = tile.imgInfoIDx;
+
+        return *this;
+    }
+};
+
+double calculatePSNR(ImageBase &imgOriginal, ImageBase &imgCompressed);
+double calculateSSIM(ImageBase &imgOriginal, ImageBase &imgCompared);
+int get_corresponding_image(Tile &tile, bool color, bool *used, int R, int G, int B, bool repetition = false);
 ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight);
-void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
-    int regionWidth, int regionHeight, int seuilVariance, int tailleMin, int grilleMin, bool used[], bool repetition = false);
-void mosaique(ImageBase &imIn, ImageBase &imOut, float percent = 0.05, bool repetion = false);
+void mosaique2(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &distances, std::vector<ImgInfo> &RegionInfo, int x0, int y0,
+    int regionWidth, int regionHeight, int seuilVariance, int tailleMin, int grilleMin, bool used[], bool repetition);
+void mosaique(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<ImgInfo> &RegionInfo, std::vector<int> &distances, float percent, bool repetion);
 void mosaiqueSNICPolygon(ImageBase &imIn, ImageBase &imOut, int numberSuperPixel, double compactness, bool repetition);
+ImageBase constructMosaicFromTiles(std::vector<Tile>& tiles, ImageBase &img);
+void SecondPass(std::vector<Tile> &tiles, std::vector<int> &distances, std::vector<ImgInfo> &RegionInfo, int seuil);

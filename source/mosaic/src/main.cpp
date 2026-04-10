@@ -7,75 +7,74 @@
 #include "imagesInfo.hpp"
 #include "Mask.hpp"
 
-double calculatePSNR(ImageBase &imgOriginal, ImageBase &imgCompressed) {
-    if (imgOriginal.getWidth() != imgCompressed.getWidth() || 
-        imgOriginal.getHeight() != imgCompressed.getHeight()) {
-        std::cerr << "Erreur: les images doivent avoir les mêmes dimensions" << std::endl;
-        return -1.0;
-    }
-
-    double mse = 0.0;  // Mean Squared Error
-    unsigned long nbPixels = imgOriginal.getWidth() * imgOriginal.getHeight() * 3;  // RGB
-
-    unsigned char *data1 = imgOriginal.getData();
-    unsigned char *data2 = imgCompressed.getData();
-
-    for (unsigned long i = 0; i < nbPixels; ++i) {
-        int diff = (int)data1[i] - (int)data2[i];
-        mse += diff * diff;
-    }
-
-    mse /= nbPixels;
-
-    if (mse == 0) {
-        return 100.0;  // Images identiques
-    }
-
-    double psnr = 10.0 * log10((255.0 * 255.0) / mse);
-    return psnr;
-}
-
 int main(int argc, char **argv) {
 	char cNomImgLue[250], databaseLue[250];
-	if (argc != 3) 
+	char S;
+	if (argc != 4) 
 	{
-		printf("Usage: ImageIn.ppm/pgm database.bin\n"); 
+		printf("Usage: ImageIn.ppm/pgm database.bin type_de_mosaique(1, 2 ou 3)\n"); 
 		return 1;
 	}
-	sscanf (argv[1],"%s",cNomImgLue) ;
-	sscanf (argv[2],"%s",databaseLue) ;
+	sscanf (argv[1],"%s",cNomImgLue);
+	sscanf (argv[2],"%s",databaseLue);
+	sscanf (argv[3],"%c",&S);
 	
 	ImageBase imIn;
 	imIn.load(cNomImgLue);
 
     ImageBase imOut(imIn.getWidth(), imIn.getHeight(), imIn.getColor());
+	ImageBase imOut2(imIn.getWidth(), imIn.getHeight(), imIn.getColor());
 
     // Initialisation tableau des valeurs moyennes des images
-    //initImgInfos();
 	initImgInfosFromBin(databaseLue);
 
     int seuilVariance = 500; // Seuil de variance pour la subdivision
     int tailleMin = std::max(imIn.getWidth(), imIn.getHeight()) * (5/100); // Taille minimale d'une région pour la subdivision, 1% de la taille de l'image
 	int grilleMin = 2; // Nombre de subdivisions minimum
 
-	//mosaique(imIn, imOut, 0.02, false);
-    mosaiqueSNICPolygon(imIn, imOut, 4000, 30, false);
-    imOut.save("mosaiqueSuperPixel.ppm");
+	std::vector<Tile> tiles;	// Contient les imagettes de la mosaïque
+	std::vector<ImgInfo> RegionInfo;	// Contient les infos de chaque région de l'image d'entrée
+	std::vector<int> distances;	// Contient la distance entre chaque région de l'image d'entrée et l'imagette
 
-    /* bool used[imgInfos.size()] = {false};
-    //mosaique2(imIn, imOut, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, 16, grilleMin, used, false);
-	ImageBase mask;
+	bool used[imgInfos.size()] = {false};
 
-	mask.load("coeur.pgm");
+	switch(S) {
+		case '1':
+			mosaique(imIn, tiles, RegionInfo, distances, 0.02, false);
+			break;
+		case '2':
+    		mosaique2(imIn, tiles, distances, RegionInfo, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, 16, grilleMin, used, false);
+			break;
+		case '3':
+			mosaiqueSNICPolygon(imIn, imOut, 4000, 30, false);
+			imOut.save("mosaiqueSNICPolygon.ppm");
+			return 0;
+		default:
+			std::cerr << "Type de mosaïque invalide. Utilisez '1', '2' ou '3'." << std::endl;
+			return 1;
+	}
 
-	ImageBase cut = cut_image(imIn, mask);
-	cut.save("cut.ppm"); */
-	//float PSNR = calculatePSNR(imIn, imOut);
-	//std::cout << "PSNR : " << PSNR << " dB" << std::endl;
+    imOut = constructMosaicFromTiles(tiles, imIn);
+    double PSNR = calculatePSNR(imIn, imOut);
+	double SSIM = calculateSSIM(imIn, imOut);
+	std::cout << "Avant 2nd pass\n\tPSNR : " << PSNR << " dB" << std::endl;
+	std::cout << "\tSSIM : " << SSIM << std::endl;
+	imOut.save("mosaique.ppm");
 
-	//imOut.save("mosaique1.ppm");
+    SecondPass(tiles, distances, RegionInfo, 20);
+    imOut2 = constructMosaicFromTiles(tiles, imIn);
+    double PSNR2 = calculatePSNR(imIn, imOut2);
+	double SSIM2 = calculateSSIM(imIn, imOut2);
+	std::cout << "Après 2nd pass\n\tPSNR : " << PSNR2 << " dB" << std::endl;
+	std::cout << "\tSSIM : " << SSIM2 << std::endl;
+	imOut2.save("mosaique2ndPass.ppm");
 
-    //mosaique2(imIn, imOut, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, tailleMin, grilleMin);
 
-	//imOut.save("mosaique2.ppm");
+	/*if (PSNR2 > PSNR) {
+		imOut2.save("mosaique2ndPass.ppm");
+	} else {
+		imOut.save("mosaique.ppm");
+	}*/
+
+	return 0;
 }

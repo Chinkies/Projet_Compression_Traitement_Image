@@ -622,3 +622,31 @@ ImageBase Traitement::resizeImage(ImageBase& img, int newWidth, int newHeight) {
     return resized;
 }
 
+static ImageBase RGB_to_LAB(ImageBase &img) {
+    int width = img.getWidth();
+    int height = img.getHeight();
+    ImageBase LAB_image(width, height, true);
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            Pixel p = img.getPixel(x, y);
+            double r = p.R / 255.0;
+            double g = p.G / 255.0;
+            double b = p.B / 255.0;
+
+            // Convertir RGB en XYZ
+            double X = r * 0.4124564 + g * 0.2126729 + b * 0.0193339;
+            double Y = r * 0.2126729 + g * 0.7151522 + b * 0.1191920;
+            double Z = r * 0.0193339 + g * 0.1191920 + b * 0.9503041;
+
+            // Convertir XYZ en LAB
+            double L = std::max(0.0, std::min(100.0, (Y > 0.008856) ? (116 * std::cbrt(Y) - 16) : (903.3 * Y)));
+            double A = std::max(-128.0, std::min(127.0, (X > 0.008856) ? (116 * std::cbrt(X) - 16) : (903.3 * X)));
+            double B = std::max(-128.0, std::min(127.0, (Z > 0.008856) ? (116 * std::cbrt(Z) - 16) : (903.3 * Z)));
+
+            LAB_image.setPixelTo(x, y, Pixel(static_cast<unsigned char>(L), static_cast<unsigned char>(A + 128), static_cast<unsigned char>(B + 128), x, y));
+        }
+    }
+
+    return LAB_image;
+}

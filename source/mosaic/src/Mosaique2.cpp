@@ -1,41 +1,105 @@
 #include "Mosaique2.hpp"
 #include "../../super_pixel/src/snic_mex.hpp"
 
-//TODO : faire en sorte de trouver l'image la plus proche et non la première
-ImageBase get_corresponding_image_old(bool color, int m) {
+double calculatePSNR(ImageBase &imgOriginal, ImageBase &imgCompressed) {
+    if (imgOriginal.getWidth() != imgCompressed.getWidth() || 
+        imgOriginal.getHeight() != imgCompressed.getHeight()) {
+        std::cerr << "Erreur: les images doivent avoir les mêmes dimensions" << std::endl;
+        return -1.0;
+    }
 
-    for (const auto& imgInfo : imgInfos) {
+    double mse = 0.0;  // Mean Squared Error
+    unsigned long nbPixels = imgOriginal.getWidth() * imgOriginal.getHeight() * 3;  // RGB
 
-        std::string path = imgInfo.getBinPath();
-        int id = imgInfo.getBinId();
+    unsigned char *data1 = imgOriginal.getData();
+    unsigned char *data2 = imgCompressed.getData();
 
-        //TODO : ne fonctionne qu'avec des images couleurs
-        if (color) {
-            double avgColor = (imgInfo.R + imgInfo.G + imgInfo.B) / 3.0;
-            if (std::abs(avgColor - m) < 10) { // Seuil de 10 pour trouver une image similaire
-                ImageBase img;
-                //img.load(const_cast<char*>(imgInfo.name.c_str()));
-                img.loadFromBin(const_cast<char*>(path.c_str()), id);
-                return img;
-            }
-        } else if (std::abs(imgInfo.N - m) < 10) { // Seuil de 10 pour trouver une image similaire
-                ImageBase img;
-                img.load(const_cast<char*>(imgInfo.name.c_str()));
-                return img;
-            }
-        }
-    return ImageBase();
+    for (unsigned long i = 0; i < nbPixels; ++i) {
+        int diff = (int)data1[i] - (int)data2[i];
+        mse += diff * diff;
+    }
+
+    mse /= nbPixels;
+
+    if (mse == 0) {
+        return 100.0;  // Images identiques
+    }
+
+    double psnr = 10.0 * log10((255.0 * 255.0) / mse);
+    return psnr;
 }
 
+double calculateSSIM(ImageBase &imgOriginal, ImageBase &imgCompared) {
+    if (imgOriginal.getWidth() != imgCompared.getWidth() ||
+        imgOriginal.getHeight() != imgCompared.getHeight() ||
+        imgOriginal.getColor() != imgCompared.getColor()) {
+        std::cerr << "Erreur: les images doivent avoir les mêmes dimensions et le même type" << std::endl;
+        return -1.0;
+    }
+
+    const int channels = imgOriginal.getColor() ? 3 : 1;
+    const unsigned long nbValues =
+        static_cast<unsigned long>(imgOriginal.getWidth()) *
+        static_cast<unsigned long>(imgOriginal.getHeight()) *
+        static_cast<unsigned long>(channels);
+
+    if (nbValues == 0) {
+        std::cerr << "Erreur: image vide" << std::endl;
+        return -1.0;
+    }
+
+    unsigned char *data1 = imgOriginal.getData();
+    unsigned char *data2 = imgCompared.getData();
+
+    double muX = 0.0;
+    double muY = 0.0;
+    for (unsigned long i = 0; i < nbValues; ++i) {
+        muX += static_cast<double>(data1[i]);
+        muY += static_cast<double>(data2[i]);
+    }
+    muX /= static_cast<double>(nbValues);
+    muY /= static_cast<double>(nbValues);
+
+    double sigmaX2 = 0.0;
+    double sigmaY2 = 0.0;
+    double sigmaXY = 0.0;
+
+    for (unsigned long i = 0; i < nbValues; ++i) {
+        const double x = static_cast<double>(data1[i]) - muX;
+        const double y = static_cast<double>(data2[i]) - muY;
+        sigmaX2 += x * x;
+        sigmaY2 += y * y;
+        sigmaXY += x * y;
+    }
+
+    sigmaX2 /= static_cast<double>(nbValues);
+    sigmaY2 /= static_cast<double>(nbValues);
+    sigmaXY /= static_cast<double>(nbValues);
+
+    const double L = 255.0;
+    const double C1 = (0.01 * L) * (0.01 * L);
+    const double C2 = (0.03 * L) * (0.03 * L);
+
+    const double numerator = (2.0 * muX * muY + C1) * (2.0 * sigmaXY + C2);
+    const double denominator =
+        (muX * muX + muY * muY + C1) * (sigmaX2 + sigmaY2 + C2);
+
+    if (denominator == 0.0) {
+        return 1.0;
+    }
+
+    return numerator / denominator;
+}
 // version qui traite séparéments les composantes R, G, B plutôt que de faire une moyenne des 3
-ImageBase get_corresponding_image(bool color, bool *used, int R, int G, int B, bool repetition) {
+// Modification: maintenant rajoute une tile dans le tableau des tiles et renvoie la distance entre la tile et la région cible
+int get_corresponding_image(Tile &tile, bool color, bool *used, int R, int G, int B, bool repetition) {
 
     int dR = 255, dG = 255, dB = 255;
     int bestIdx = -1;
     int idx = 0;
     
     if (!repetition){
-        for (const auto& imgInfo : imgInfos) {
+        for (auto& imgInfo : imgInfos) {
 
             //TODO : ne fonctionne qu'avec des images couleurs
             if (color) {
@@ -51,7 +115,6 @@ ImageBase get_corresponding_image(bool color, bool *used, int R, int G, int B, b
 
         if (bestIdx == -1) {
             std::cout << "Aucune image correspondante trouvée pour R=" << R << " G=" << G << " B=" << B << std::endl;
-            return ImageBase();
         }
 
         used[bestIdx] = true;
@@ -59,12 +122,11 @@ ImageBase get_corresponding_image(bool color, bool *used, int R, int G, int B, b
         std::string path = imgInfos[bestIdx].getBinPath();
         int id = imgInfos[bestIdx].getBinId();
 
-        ImageBase img;
-        //img.load(const_cast<char*>(imgInfo.name.c_str()));
-        img.loadFromBin(const_cast<char*>(path.c_str()), id);
-        return img;
+        tile.imgInfoIDx = bestIdx;
+
+
     } else {
-        for (const auto& imgInfo : imgInfos) {
+        for (auto& imgInfo : imgInfos) {
 
             //TODO : ne fonctionne qu'avec des images couleurs
             if (color) {
@@ -80,17 +142,16 @@ ImageBase get_corresponding_image(bool color, bool *used, int R, int G, int B, b
 
         if (bestIdx == -1) {
             std::cout << "Aucune image correspondante trouvée pour R=" << R << " G=" << G << " B=" << B << std::endl;
-            return ImageBase();
         }
 
         std::string path = imgInfos[bestIdx].getBinPath();
         int id = imgInfos[bestIdx].getBinId();
 
-        ImageBase img;
-        //img.load(const_cast<char*>(imgInfo.name.c_str()));
-        img.loadFromBin(const_cast<char*>(path.c_str()), id);
-        return img;
+        tile.imgInfoIDx = bestIdx;
+
     }
+
+    return dB+dG+dR;
 }
 
 ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight) {
@@ -105,30 +166,126 @@ ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight) {
     return resized;
 }
 
-/*
-    Mosaique2 est plus poussé qu'une mosaique naïve, elle subdivise l'image en fonction d'un seuil de variance
-    pour avoir des régions plus homogènes, et ainsi trouver des images plus similaires à ces régions.
+int get_distance(ImageBase &img1, ImageBase &img2) {
+    int distance = 0;
+    ImageBase resized = resizeImage(img2, img1.getWidth(), img1.getHeight());
+    for (int y = 0; y < img1.getHeight(); ++y) {
+        for (int x = 0; x < img1.getWidth(); ++x) {
+            Pixel p1 = img1.getPixel(x, y);
+            Pixel p2 = resized.getPixel(x, y);
+            if (img1.getColor()) {
+                distance += std::abs(p1.R - p2.R) + std::abs(p1.G - p2.G) + std::abs(p1.B - p2.B);
+            } else {
+                distance += std::abs(p1.N - p2.N);
+            }
+        }
+    }
+    return distance;
+}
 
-    Je me suis inspiré du TP noté de traitement d'image.
+ImageBase chargeTileRegion(Tile &tile, ImageBase &img) {
+    ImageBase tileRegion(tile.width, tile.height, img.getColor());
+    for (int y = 0; y < tile.height; ++y) {
+        for (int x = 0; x < tile.width; ++x) {
+            tileRegion.setPixelTo(x, y, img.getPixel(tile.x + x, tile.y + y));
+        }
+    }
+    return tileRegion;
+}
 
-    Malheureusement je n'ai pas de base de donnée d'image pour pouvoir tester.
-*/
+ImageBase chargeTile(Tile &tile, ImageBase &img) {
+    std::string path = imgInfos[tile.imgInfoIDx].getBinPath();
+    int id = imgInfos[tile.imgInfoIDx].getBinId();
 
-void mosaique(ImageBase &imIn, ImageBase &imOut, float percent, bool repetion) {
+    ImageBase tileImg;
+    tileImg.loadFromBin(const_cast<char*>(path.c_str()), id);
+
+    ImageBase resized = resizeImage(tileImg, tile.width, tile.height);
+    return resized;
+}
+
+void tileSwap(Tile &tile1, Tile &tile2) {
+    int tempIdx = tile1.imgInfoIDx;
+
+    tile1.imgInfoIDx = tile2.imgInfoIDx;
+
+    tile2.imgInfoIDx = tempIdx;
+}
+
+
+// A faire : trouver une meilleure heuristique
+void SecondPass(std::vector<Tile> &tiles, std::vector<int> &distances, std::vector<ImgInfo> &RegionInfo, int seuil) {
+    int count = 0;
+
+    for (size_t i = 0; i < tiles.size(); i++) {
+        if (distances[i] > seuil) { // Seulement pour les tiles dont la distance est supérieure au seuil
+            int idx = tiles[i].imgInfoIDx;
+
+            for (size_t j = i+1; j < tiles.size(); j++) {
+                if (distances[j] > seuil) {
+                    int idx2 = tiles[j].imgInfoIDx;
+                    int d1 = distances[i] + distances[j]; // Distance totale avant le swap
+
+                    // Calcul de la distance Region cible avec imagette en cours
+                    int R1 = std::abs(imgInfos[idx].R - RegionInfo[j].R);
+                    int G1 = std::abs(imgInfos[idx].G - RegionInfo[j].G);
+                    int B1 = std::abs(imgInfos[idx].B - RegionInfo[j].B);
+
+                    // Calcul de la distance Region en cours avec imagette cible
+                    int R2 = std::abs(imgInfos[idx2].R - RegionInfo[i].R);
+                    int G2 = std::abs(imgInfos[idx2].G - RegionInfo[i].G);
+                    int B2 = std::abs(imgInfos[idx2].B - RegionInfo[i].B);
+
+                    int d2 = (R1+G1+B1) + (R2+G2+B2); // Distance totale après le swap
+
+                    if (d2 < d1) {
+                        tileSwap(tiles[i], tiles[j]);
+
+                        distances[j] = R1+G1+B1;
+                        distances[i] = R2+G2+B2;
+
+                        count++;
+                    }
+                }
+            }
+        }
+    }
+
+    std::cout << "Nombre de swaps effectués : " << count << std::endl;
+}
+
+// Fonction qui construit la mosaique finale à partir des tiles sélectionnées
+ImageBase constructMosaicFromTiles(std::vector<Tile>& tiles, ImageBase &img) {
+    ImageBase mosaic(img.getWidth(), img.getHeight(), img.getColor());
+
+    for (auto& tile : tiles) {
+        ImageBase tileImg = chargeTile(tile, img);
+
+        for (int y = 0; y < tile.height; ++y) {
+            for (int x = 0; x < tile.width; ++x) {
+                mosaic.setPixelTo(tile.x + x, tile.y + y, tileImg.getPixel(x, y));
+            }
+        }
+    }
+    return mosaic;
+}
+
+void mosaique(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<ImgInfo> &RegionInfo, std::vector<int> &distances, float percent, bool repetion) {
     bool used[imgInfos.size()];
     for (size_t i = 0; i < imgInfos.size(); ++i) {
         used[i] = false;
     }
+
     int width = imIn.getWidth();
     int height = imIn.getHeight();
 
     int gridWidth = static_cast<int>(width * percent);
     int gridHeight = static_cast<int>(height * percent);
 
-    std::cout << "Number of cells : " << (width / gridWidth) * (height / gridHeight) << std::endl;
-
     if (gridWidth <= 0) gridWidth = 1;
     if (gridHeight <= 0) gridHeight = 1;
+
+    std::cout << "Number of cells : " << (width / gridWidth) * (height / gridHeight) << std::endl;
 
     for (int y0 = 0; y0 < height; y0 += gridHeight) {
         for (int x0 = 0; x0 < width; x0 += gridWidth) {
@@ -153,23 +310,25 @@ void mosaique(ImageBase &imIn, ImageBase &imOut, float percent, bool repetion) {
             G /= (tileWidth * tileHeight);
             B /= (tileWidth * tileHeight);
 
-            ImageBase imagette = get_corresponding_image(imIn.getColor(), used, R, G, B, repetion);
-            if (!imagette.getValidity()) {
-                continue;
-            }
+            ImgInfo regionInfo;
+            regionInfo.R = R;
+            regionInfo.G = G;
+            regionInfo.B = B;
+            RegionInfo.push_back(regionInfo);
 
-            ImageBase resized = resizeImage(imagette, tileWidth, tileHeight);
+            Tile tile = {x0, y0, tileWidth, tileHeight, -1};
+            int distance = get_corresponding_image(tile, imIn.getColor(), used, R, G, B, repetion);
+            distances.push_back(distance);
+            tiles.push_back(tile);
 
-            for (int y = 0; y < tileHeight; ++y) {
-                for (int x = 0; x < tileWidth; ++x) {
-                    imOut.setPixelTo(x0 + x, y0 + y, resized.getPixel(x, y));
-                }
-            }
+            //std::cout << "Processed tile at (" << x0 << ", " << y0 << ") with distance " << distance << "\33[2K\r";
+            
         }
     }
+    
 }
 
-void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
+void mosaique2(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &distances, std::vector<ImgInfo> &RegionInfo, int x0, int y0,
     int regionWidth, int regionHeight, int seuilVariance, int tailleMin, int grilleMin, bool used[], bool repetition) {
 
     int demiWidth = regionWidth / 2;
@@ -187,36 +346,26 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
 
     for (int y = 0; y < demiHeight; ++y) {
         for (int x = 0; x < demiWidth; ++x) {
-            //int idxIn = (y0 + y) * imIn.getWidth() + (x0 + x);
-            //int idx = y * demiWidth + x;
             Pixel p1 = imIn.getPixel((x0 + x), (y0 + y));
             Pixel p2 = imIn.getPixel((x0 + demiWidth + x), (y0 + y));
             Pixel p3 = imIn.getPixel((x0 + x), (y0 + demiHeight + y));
             Pixel p4 = imIn.getPixel((x0 + demiWidth + x), (y0 + demiHeight + y));
 
-            //r1.getData()[idx] = imIn.getData()[idxIn];
-            //m1 += r1.getData()[idx];
             r1.setPixelTo(x, y, p1);
             R1 += p1.R;
             G1 += p1.G;
             B1 += p1.B;
 
-            //r2.getData()[idx] = imIn.getData()[idxIn + demiWidth];
-            //m2 += r2.getData()[idx];
             r2.setPixelTo(x, y, p2);
             R2 += p2.R;
             G2 += p2.G;
             B2 += p2.B;
 
-            //r3.getData()[idx] = imIn.getData()[idxIn + demiWidth * imIn.getWidth()];
-            //m3 += r3.getData()[idx];
             r3.setPixelTo(x, y, p3);
             R3 += p3.R;
             G3 += p3.G;
             B3 += p3.B;
 
-            //r4.getData()[idx] = imIn.getData()[idxIn + demiWidth * imIn.getWidth() + demiWidth];
-            //m4 += r4.getData()[idx];
             r4.setPixelTo(x, y, p4);
             R4 += p4.R;
             G4 += p4.G;
@@ -247,78 +396,70 @@ void mosaique2(ImageBase &imIn, ImageBase &imOut, int x0, int y0,
 
     //TODO : à corriger 
     if ((v1 > seuilVariance || grilleMin > 0) && demiWidth >= tailleMin && demiHeight >= tailleMin) {
-        mosaique2(imIn, imOut, x0, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
+        mosaique2(imIn, tiles, distances, RegionInfo, x0, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
-        ImageBase img = get_corresponding_image(imIn.getColor(), used, R1, G1, B1, repetition);
-        if (img.getValidity()) {
-            ImageBase resized = resizeImage(img, demiWidth, demiHeight);
-            for (int y = 0; y < demiHeight; ++y) {
-                for (int x = 0; x < demiWidth; ++x) {
-                    //int idxOut = (y0 + y) * imOut.getWidth() + (x0 + x);
-                    //imOut.getData()[idxOut] = resized.getData()[y * demiWidth + x];
-                    imOut.setPixelTo((x0 + x), (y0 + y), resized.getPixel(x,y));
-                }
-            }
-        }
+        Tile tile = {x0, y0, demiWidth, demiHeight, -1};
+        ImgInfo regionInfo;
+        regionInfo.R = R1;
+        regionInfo.G = G1;
+        regionInfo.B = B1;
+        int distance = get_corresponding_image(tile, imIn.getColor(), used, R1, G1, B1, repetition);
+
+        distances.push_back(distance);
+        RegionInfo.push_back(regionInfo);
+        tiles.push_back(tile);
     }
 
     if ((v2 > seuilVariance || grilleMin > 0) && demiWidth >= tailleMin && demiHeight >= tailleMin) {
-        mosaique2(imIn, imOut, x0 + demiWidth, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
+        mosaique2(imIn, tiles, distances, RegionInfo, x0 + demiWidth, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
-        ImageBase img = get_corresponding_image(imIn.getColor(), used, R2, G2, B2, repetition);
-        if (img.getValidity()) {
-            ImageBase resized = resizeImage(img, demiWidth, demiHeight);
-            for (int y = 0; y < demiHeight; ++y) {
-                for (int x = 0; x < demiWidth; ++x) {
-                    //int idxOut = (y0 + y) * imOut.getWidth() + (x0 + x);
-                    //imOut.getData()[idxOut] = resized.getData()[y * demiWidth + x];
-                    imOut.setPixelTo((x0 + demiWidth + x), (y0 + y), resized.getPixel(x,y));
-                }
-            }
-        }
+        Tile tile = {x0 + demiWidth, y0, demiWidth + regionWidth%2, demiHeight, -1};
+        ImgInfo regionInfo;
+        regionInfo.R = R2;
+        regionInfo.G = G2;
+        regionInfo.B = B2;
+        int distance = get_corresponding_image(tile, imIn.getColor(), used, R2, G2, B2, repetition);
+        
+        distances.push_back(distance);
+        RegionInfo.push_back(regionInfo);
+        tiles.push_back(tile);
     }
 
     if ((v3 > seuilVariance || grilleMin > 0) && demiWidth >= tailleMin && demiHeight >= tailleMin) {
-        mosaique2(imIn, imOut, x0, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
+        mosaique2(imIn, tiles, distances, RegionInfo, x0, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
-        ImageBase img = get_corresponding_image(imIn.getColor(), used, R3, G3, B3, repetition);
-        if (img.getValidity()) {
-            ImageBase resized = resizeImage(img, demiWidth, demiHeight);
-            for (int y = 0; y < demiHeight; ++y) {
-                for (int x = 0; x < demiWidth; ++x) {
-                    //int idxOut = (y0 + y) * imOut.getWidth() + (x0 + x);
-                    //imOut.getData()[idxOut] = resized.getData()[y * demiWidth + x];
-                    imOut.setPixelTo((x0 + x), (y0 + demiHeight + y), resized.getPixel(x,y));
-                }
-            }
-        }
+        Tile tile = {x0, y0 + demiHeight, demiWidth, demiHeight + regionHeight%2, -1};
+        ImgInfo regionInfo;
+        regionInfo.R = R3;
+        regionInfo.G = G3;
+        regionInfo.B = B3;
+        int distance = get_corresponding_image(tile, imIn.getColor(), used, R3, G3, B3, repetition);
+        
+        distances.push_back(distance);
+        RegionInfo.push_back(regionInfo);
+        tiles.push_back(tile);
     }
 
     if ((v4 > seuilVariance || grilleMin > 0) && demiWidth >= tailleMin && demiHeight >= tailleMin) {
-        mosaique2(imIn, imOut, x0 + demiWidth, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
+        mosaique2(imIn, tiles, distances, RegionInfo, x0 + demiWidth, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
-        ImageBase img = get_corresponding_image(imIn.getColor(), used, R4, G4, B4, repetition);
-        if (img.getValidity()) {
-            ImageBase resized = resizeImage(img, demiWidth, demiHeight);
-            for (int y = 0; y < demiHeight; ++y) {
-                for (int x = 0; x < demiWidth; ++x) {
-                    //int idxOut = (y0 + y) * imOut.getWidth() + (x0 + x);
-                    //imOut.getData()[idxOut] = resized.getData()[y * demiWidth + x];
-                    imOut.setPixelTo((x0 + demiWidth + x), (y0 + demiHeight + y), resized.getPixel(x,y));
-                }
-            }
-        }
+        Tile tile = {x0 + demiWidth, y0 + demiHeight, demiWidth + regionWidth%2, demiHeight + regionHeight%2, -1};
+        ImgInfo regionInfo;
+        regionInfo.R = R4;
+        regionInfo.G = G4;
+        regionInfo.B = B4;
+        int distance = get_corresponding_image(tile, imIn.getColor(), used, R4, G4, B4, repetition);
+        
+        distances.push_back(distance);
+        RegionInfo.push_back(regionInfo);
+        tiles.push_back(tile);
     }
 }
 
-// TO DO : intégrer un masque pour la découpe de l'image, pour permettre de faire des formes différentes.
-// Detection des edges pour les imagettes
-// Super-pixel
-// Second pass pour swap
 
 void mosaiqueSNICPolygon(ImageBase &imIn, ImageBase &imOut, int numberSuperPixel, double compactness, bool repetition)
 {
@@ -417,7 +558,7 @@ void mosaiqueSNICPolygon(ImageBase &imIn, ImageBase &imOut, int numberSuperPixel
         boundingBoxWidth = allSuperPixel[i].maxX - allSuperPixel[i].minX + 1;
         boundingBoxHeight = allSuperPixel[i].maxY - allSuperPixel[i].minY + 1;
         
-        imagette = get_corresponding_image(color, used, meansR, meansG, meansB, repetition);
+        //imagette = get_corresponding_image(color, used, meansR, meansG, meansB, repetition);
         
         if (!imagette.getValidity()) continue;
 

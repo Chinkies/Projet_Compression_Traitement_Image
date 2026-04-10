@@ -24,4 +24,5 @@ class Traitement {
         static ImageBase hysteresis(ImageBase &img, int SB, int SH);
         static float variance(ImageBase &img);
         static ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight);
+        static ImageBase RGB_to_LAB(ImageBase &img);
 };
