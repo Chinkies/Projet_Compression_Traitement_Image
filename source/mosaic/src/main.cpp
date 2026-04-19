@@ -10,7 +10,8 @@
 int main(int argc, char **argv) {
 	char cNomImgLue[250], databaseLue[250];
 	char S;
-	if (argc != 4) 
+	int topK;
+	if (argc != 5) 
 	{
 		printf("Usage: ImageIn.ppm/pgm database.bin type_de_mosaique(1, 2 ou 3)\n"); 
 		return 1;
@@ -18,6 +19,7 @@ int main(int argc, char **argv) {
 	sscanf (argv[1],"%s",cNomImgLue);
 	sscanf (argv[2],"%s",databaseLue);
 	sscanf (argv[3],"%c",&S);
+	sscanf (argv[4],"%d",&topK);
 	
 	ImageBase imIn;
 	imIn.load(cNomImgLue);
@@ -47,7 +49,7 @@ int main(int argc, char **argv) {
     		mosaique2(imIn, tiles, distances, RegionInfo, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, 16, grilleMin, used, false);
 			break;
 		case '3':
-			mosaiqueSNICPolygon(imIn, tiles, distances, RegionInfo, snicLabels, 3000, 30, false);
+			mosaiqueSNICPolygon(imIn, tiles, distances, RegionInfo, snicLabels, 3000, topK, false);
 			break;
 		default:
 			std::cerr << "Type de mosaïque invalide. Utilisez '1', '2' ou '3'." << std::endl;
@@ -68,7 +70,7 @@ int main(int argc, char **argv) {
 	std::cout << "\tSSIM : " << SSIM << std::endl;
 	imOut.save("mosaique.ppm");
 
-    SecondPass(tiles, distances, RegionInfo, 20);
+    SecondPass(tiles, distances, RegionInfo, imIn, 20, topK);
 
 	if (S == '3') {
 		imOut2 = constructMosaicFromLabels(tiles, snicLabels, imIn);

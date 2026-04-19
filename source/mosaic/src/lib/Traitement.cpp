@@ -650,3 +650,34 @@ static ImageBase RGB_to_LAB(ImageBase &img) {
 
     return LAB_image;
 }
+
+// Rotation simple (90, 180 et 270 degré)
+ImageBase Traitement::rotateImage(ImageBase &img, int angle){
+    if (angle == 0) return img;
+    
+    int width = img.getWidth();
+    int height = img.getHeight();
+
+    ImageBase res(
+        (angle == 90 || angle == 270) ? height : width,
+        (angle == 90 || angle == 270) ? width : height,
+        img.getColor()
+    );
+
+    for (int y = 0; y < height; ++y){
+        for (int x = 0; x < width; ++x){
+            
+            Pixel p = img.getPixel(x, y);
+        
+            if (angle == 90) {
+                res.setPixelTo(height - 1 - y, x, p);
+            } else if (angle == 180) {
+                res.setPixelTo(width - 1 - x, height - 1 - y, p);
+            } else if (angle == 270) {
+                res.setPixelTo(y, width - 1 - x, p);
+            }
+        }
+    }
+
+    return res;
+}

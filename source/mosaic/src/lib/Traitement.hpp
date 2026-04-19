@@ -25,4 +25,5 @@ class Traitement {
         static float variance(ImageBase &img);
         static ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight);
         static ImageBase RGB_to_LAB(ImageBase &img);
+        static ImageBase rotateImage(ImageBase &img, int angle); // Rotation simple de 90 180 et 270 degré
 };

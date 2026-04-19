@@ -154,6 +154,102 @@ int get_corresponding_image(Tile &tile, bool color, bool *used, int R, int G, in
     return dB+dG+dR;
 }
 
+// topK correspond au nombre d'image que l'on garde (image proche en distance RGB) pour tester pixel à pixel
+int getBestRotation(ImageBase& regionTarget, ImgInfo& regionInfo, Tile& tile, bool used[], bool repetition, int topK){
+    int bestIndex = -1;
+    int bestRotation = 0; // Aucune rotation par default
+    long minDistance = 1000000;
+
+    std::vector<Candidate> candidates;
+
+    Pixel targetMean((0, 0, 0), 0, 0);
+
+    for (int i = 0; i < (int)imgInfos.size(); ++i){
+        if (!repetition && used[i]) continue;
+        int diff = std::abs(imgInfos[i].R - regionInfo.R) + 
+                   std::abs(imgInfos[i].G - regionInfo.G) + 
+                   std::abs(imgInfos[i].B - regionInfo.B);
+        candidates.push_back({i, diff});
+    }
+
+    std::sort(candidates.begin(), candidates.end(), [](const Candidate& a, const Candidate& b){
+        return a.difference < b.difference;
+    });
+
+    int limit = std::min((int)candidates.size(), topK);
+
+    for (int i = 0; i < limit; ++i){
+        int currentImgIndex = candidates[i].index;
+
+        ImageBase loaded;
+
+        loaded.loadFromBin(const_cast<char*>(imgInfos[currentImgIndex].getBinPath().c_str()), imgInfos[currentImgIndex].getBinId());
+
+        int angles[] = {0, 90, 180, 270};
+
+        for (int angle : angles){
+            ImageBase rotated = Traitement::rotateImage(loaded, angle);
+            ImageBase resized = resizeImage(rotated, tile.width, tile.height);
+
+            long currentDistance = 0;
+            for (int y = 0; y < tile.height; ++y){
+                for (int x = 0; x < tile.width; ++x){
+                    Pixel pTarget = regionTarget.getPixel(x, y);
+                    Pixel pCandidate = resized.getPixel(x, y);
+
+                    currentDistance += std::abs(pTarget.R - pCandidate.R) + 
+                        std::abs(pTarget.G - pCandidate.G) + 
+                        std::abs(pTarget.B - pCandidate.B);
+                }
+            }
+
+            if (currentDistance < minDistance) {
+                minDistance = currentDistance;
+                bestIndex = currentImgIndex;
+                bestRotation = angle;
+            }
+        }
+    }
+
+    if (bestIndex != -1) {
+        tile.imgInfoIDx = bestIndex;
+        tile.rotation = bestRotation;
+        if (!repetition) used[bestIndex] = true;
+    }
+
+    return (bestIndex != -1) ? (int)(minDistance / (tile.width * tile.height)) : 1000000;
+}
+
+int getBestRotationForSpecificImage(ImageBase& regionTarget, Tile& tile) {
+    int bestRotation = 0;
+    long minDistance = 1000000;
+    
+    ImageBase loaded;
+    loaded.loadFromBin(const_cast<char*>(imgInfos[tile.imgInfoIDx].getBinPath().c_str()), 
+                                          imgInfos[tile.imgInfoIDx].getBinId());
+
+    int angles[] = {0, 90, 180, 270};
+    for (int angle : angles) {
+        ImageBase rotated = Traitement::rotateImage(loaded, angle);
+        ImageBase resized = resizeImage(rotated, tile.width, tile.height);
+
+        long currentDist = 0;
+        for (int y = 0; y < tile.height; ++y) {
+            for (int x = 0; x < tile.width; ++x) {
+                Pixel pT = regionTarget.getPixel(x, y);
+                Pixel pC = resized.getPixel(x, y);
+                currentDist += std::abs(pT.R - pC.R) + std::abs(pT.G - pC.G) + std::abs(pT.B - pC.B);
+            }
+        }
+        if (currentDist < minDistance) {
+            minDistance = currentDist;
+            bestRotation = angle;
+        }
+    }
+    tile.rotation = bestRotation;
+    return (int)(minDistance / (tile.width * tile.height));
+}
+
 ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight) {
     ImageBase resized(newWidth, newHeight, img.getColor());
     for (int y = 0; y < newHeight; ++y) {
@@ -200,7 +296,9 @@ ImageBase chargeTile(Tile &tile, ImageBase &img) {
     ImageBase tileImg;
     tileImg.loadFromBin(const_cast<char*>(path.c_str()), id);
 
-    ImageBase resized = resizeImage(tileImg, tile.width, tile.height);
+    ImageBase rotated = Traitement::rotateImage(tileImg, tile.rotation);
+
+    ImageBase resized = resizeImage(rotated, tile.width, tile.height);
     return resized;
 }
 
@@ -212,11 +310,69 @@ void tileSwap(Tile &tile1, Tile &tile2) {
     tile2.imgInfoIDx = tempIdx;
 }
 
+void SecondPass(std::vector<Tile> &tiles, std::vector<int> &distances, std::vector<ImgInfo> &RegionInfo, ImageBase &imIn, int seuil, int topK) {
+    int count = 0;
+    int tilesSize = tiles.size();
 
-// A faire : trouver une meilleure heuristique
+    for (int i = 0; i < tilesSize; i++) {
+
+        if (distances[i] < seuil) continue;
+
+        std::vector<Candidate> candidates;
+    
+        for (int j = 0; j < tilesSize; ++j){
+            if (i == j) continue;
+            
+            int difference = std::abs(RegionInfo[i].R - imgInfos[tiles[j].imgInfoIDx].R) +
+                       std::abs(RegionInfo[i].G - imgInfos[tiles[j].imgInfoIDx].G) +
+                       std::abs(RegionInfo[i].B - imgInfos[tiles[j].imgInfoIDx].B);
+            
+            candidates.push_back({j, difference});
+        }
+
+        std::sort(candidates.begin(), candidates.end(), [](const Candidate& a, const Candidate& b) {
+            return a.difference < b.difference;
+        });
+        
+        int limit = std::min((int)candidates.size(), topK);
+        
+        ImageBase regionI = chargeTileRegion(tiles[i], imIn);
+
+        for (int k = 0; k < limit; ++k) {
+            
+            int currentIndex = candidates[k].index;
+
+            ImageBase regionJ = chargeTileRegion(tiles[currentIndex], imIn);
+
+            Tile tempTileI = tiles[i];
+            tempTileI.imgInfoIDx = tiles[currentIndex].imgInfoIDx;
+            int newDistanceI = getBestRotationForSpecificImage(regionI, tempTileI);
+
+            Tile tempTileJ = tiles[currentIndex];
+            tempTileJ.imgInfoIDx = tiles[i].imgInfoIDx;
+            int newDistanceJ = getBestRotationForSpecificImage(regionJ, tempTileJ);
+
+            if ((newDistanceI + newDistanceJ) < (distances[i] + distances[currentIndex])) {
+
+                tiles[i].imgInfoIDx = tempTileI.imgInfoIDx;
+                tiles[i].rotation = tempTileI.rotation;
+                distances[i] = newDistanceI;
+
+                tiles[currentIndex].imgInfoIDx = tempTileJ.imgInfoIDx;
+                tiles[currentIndex].rotation = tempTileJ.rotation;
+                distances[currentIndex] = newDistanceJ;
+
+                count++;
+                break; 
+            }
+        }
+    }
+    std::cout << "Second Pass terminée : " << count << " swaps effectués avec optimisation de rotation." << std::endl;
+}
+
+/* // A faire : trouver une meilleure heuristique
 void SecondPass(std::vector<Tile> &tiles, std::vector<int> &distances, std::vector<ImgInfo> &RegionInfo, int seuil) {
     int count = 0;
-
     for (size_t i = 0; i < tiles.size(); i++) {
         if (distances[i] > seuil) { // Seulement pour les tiles dont la distance est supérieure au seuil
             int idx = tiles[i].imgInfoIDx;
@@ -252,7 +408,7 @@ void SecondPass(std::vector<Tile> &tiles, std::vector<int> &distances, std::vect
     }
 
     std::cout << "Nombre de swaps effectués : " << count << std::endl;
-}
+} */
 
 // Fonction qui construit la mosaique finale à partir des tiles sélectionnées
 ImageBase constructMosaicFromTiles(std::vector<Tile>& tiles, ImageBase &img) {
@@ -287,7 +443,7 @@ ImageBase constructMosaicFromLabels(std::vector<Tile>& tiles, const std::vector<
             int index = y * width + x;
             int label = labels[index];
 
-            if (label >= 0 && label < (int)tiles.size() && tiles[label].imgInfoIDx != -1) {
+            if (label >= 0 && label < tiles.size() && tiles[label].imgInfoIDx != -1) {
                 Tile& t = tiles[label];
 
                 int localX = x - t.x;
@@ -348,7 +504,7 @@ void mosaique(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<ImgInfo> &R
             regionInfo.B = B;
             RegionInfo.push_back(regionInfo);
 
-            Tile tile = {x0, y0, tileWidth, tileHeight, -1};
+            Tile tile = {x0, y0, tileWidth, tileHeight, -1, 0};
             int distance = get_corresponding_image(tile, imIn.getColor(), used, R, G, B, repetion);
             distances.push_back(distance);
             tiles.push_back(tile);
@@ -431,7 +587,7 @@ void mosaique2(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &dist
         mosaique2(imIn, tiles, distances, RegionInfo, x0, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
-        Tile tile = {x0, y0, demiWidth, demiHeight, -1};
+        Tile tile = {x0, y0, demiWidth, demiHeight, -1, 0};
         ImgInfo regionInfo;
         regionInfo.R = R1;
         regionInfo.G = G1;
@@ -447,7 +603,7 @@ void mosaique2(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &dist
         mosaique2(imIn, tiles, distances, RegionInfo, x0 + demiWidth, y0, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
-        Tile tile = {x0 + demiWidth, y0, demiWidth + regionWidth%2, demiHeight, -1};
+        Tile tile = {x0 + demiWidth, y0, demiWidth + regionWidth%2, demiHeight, -1, 0};
         ImgInfo regionInfo;
         regionInfo.R = R2;
         regionInfo.G = G2;
@@ -463,7 +619,7 @@ void mosaique2(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &dist
         mosaique2(imIn, tiles, distances, RegionInfo, x0, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
-        Tile tile = {x0, y0 + demiHeight, demiWidth, demiHeight + regionHeight%2, -1};
+        Tile tile = {x0, y0 + demiHeight, demiWidth, demiHeight + regionHeight%2, -1, 0};
         ImgInfo regionInfo;
         regionInfo.R = R3;
         regionInfo.G = G3;
@@ -479,7 +635,7 @@ void mosaique2(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &dist
         mosaique2(imIn, tiles, distances, RegionInfo, x0 + demiWidth, y0 + demiHeight, demiWidth, demiHeight, seuilVariance, tailleMin, grilleMin-1, used, repetition);
     } else {
         // Mettre l'image correspondante dans imOut
-        Tile tile = {x0 + demiWidth, y0 + demiHeight, demiWidth + regionWidth%2, demiHeight + regionHeight%2, -1};
+        Tile tile = {x0 + demiWidth, y0 + demiHeight, demiWidth + regionWidth%2, demiHeight + regionHeight%2, -1, 0};
         ImgInfo regionInfo;
         regionInfo.R = R4;
         regionInfo.G = G4;
@@ -494,7 +650,7 @@ void mosaique2(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &dist
 
 
 void mosaiqueSNICPolygon(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &distances, std::vector<ImgInfo> &RegionInfo,
-    std::vector<int> &outLabels, int numberSuperPixel, double compactness, bool repetition)
+    std::vector<int> &outLabels, int numberSuperPixel, double compactness, bool repetition, int topK)
 {
     int width   = imIn.getWidth();
     int height  = imIn.getHeight();
@@ -577,14 +733,12 @@ void mosaiqueSNICPolygon(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<
     bool* used = new bool[imgInfos.size()](); // faudra utiliser ce genre de déclaration si la base de données devient immense
 
     int meansR, meansG, meansB, boundingBoxWidth, boundingBoxHeight, imageX, imageY;
-    ImageBase imagette, resized;
-
 
     for (int i = 0; i < nbrSuperPixel; ++i)
     {
         // si le superpixel ne contient aucun pixel, on met un label factice pour garder l'alignement index = label
         if (allSuperPixel[i].nbrPixel == 0) {
-            Tile emptyTile = {0, 0, 0, 0, -1};
+            Tile emptyTile = {0, 0, 0, 0, -1, 0};
             tiles.push_back(emptyTile);
             distances.push_back(0);
             RegionInfo.push_back(ImgInfo());
@@ -598,7 +752,6 @@ void mosaiqueSNICPolygon(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<
         boundingBoxWidth = allSuperPixel[i].maxX - allSuperPixel[i].minX + 1;
         boundingBoxHeight = allSuperPixel[i].maxY - allSuperPixel[i].minY + 1;
         
-        //imagette = get_corresponding_image(color, used, meansR, meansG, meansB, repetition);
 
         ImgInfo regionInfo;
         regionInfo.R = meansR;
@@ -607,34 +760,16 @@ void mosaiqueSNICPolygon(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<
         RegionInfo.push_back(regionInfo);
 
         Tile tile = {allSuperPixel[i].minX, allSuperPixel[i].minY,
-            boundingBoxWidth, boundingBoxHeight, -1};
+            boundingBoxWidth, boundingBoxHeight, -1, 0};
 
-        int distance = get_corresponding_image(tile, imIn.getColor(), used, meansR, meansG, meansB, repetition);
+        //int distance = get_corresponding_image(tile, imIn.getColor(), used, meansR, meansG, meansB, repetition);
+
+        ImageBase regionTarget = chargeTileRegion(tile, imIn);
+
+        int distance = getBestRotation(regionTarget, regionInfo, tile, used, repetition, topK);
 
         distances.push_back(distance);
         tiles.push_back(tile);
-        
-        if (!imagette.getValidity()) continue;
-
-        /* resized = resizeImage(imagette, boundingBoxWidth, boundingBoxHeight);
-        
-        // on met le masque
-        for (int y = 0; y < boundingBoxHeight; ++y){
-            for (int x = 0; x < boundingBoxWidth; ++x)
-            {
-                imageX = allSuperPixel[i].minX + x;
-                imageY = allSuperPixel[i].minY + y;
-
-                if (imageX >= 0 && imageX < width && imageY >= 0 && imageY < height)
-                {
-                    index = imageY * width + imageX;
-                    if (labels[index] == i)
-                    {
-                        imOut.setPixelTo(imageX, imageY, resized.getPixel(x, y));
-                    }
-                }
-            }
-        } */
     }
 
     delete[] rImIn; delete[] gImIn; delete[] bImIn;
