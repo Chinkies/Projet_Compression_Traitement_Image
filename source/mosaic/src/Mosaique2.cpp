@@ -270,6 +270,38 @@ ImageBase constructMosaicFromTiles(std::vector<Tile>& tiles, ImageBase &img) {
     return mosaic;
 }
 
+// Fonction qui construit la mosaique finale spécifiquement pour la version SNIC (tile à forme variable)
+ImageBase constructMosaicFromLabels(std::vector<Tile>& tiles, const std::vector<int>& labels, ImageBase &img) {
+    ImageBase mosaic(img.getWidth(), img.getHeight(), img.getColor());
+    int width = img.getWidth();
+
+    std::vector<ImageBase> loadedTiles(tiles.size());
+    for (size_t i = 0; i < tiles.size(); ++i){
+        if (tiles[i].imgInfoIDx != -1 && tiles[i].width > 0 && tiles[i].height > 0) {
+            loadedTiles[i] = chargeTile(tiles[i], img);
+        }
+    }
+
+    for (int y = 0; y < img.getHeight(); ++y){
+        for (int x = 0; x < img.getWidth(); ++x){
+            int index = y * width + x;
+            int label = labels[index];
+
+            if (label >= 0 && label < (int)tiles.size() && tiles[label].imgInfoIDx != -1) {
+                Tile& t = tiles[label];
+
+                int localX = x - t.x;
+                int localY = y - t.y;
+
+                if (localX >= 0 && localX < t.width && localY >= 0 && localY < t.height) {
+                    mosaic.setPixelTo(x, y, loadedTiles[label].getPixel(localX, localY));
+                }
+            }
+        }
+    }
+    return mosaic;
+}
+
 void mosaique(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<ImgInfo> &RegionInfo, std::vector<int> &distances, float percent, bool repetion) {
     bool used[imgInfos.size()];
     for (size_t i = 0; i < imgInfos.size(); ++i) {
@@ -461,7 +493,8 @@ void mosaique2(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &dist
 }
 
 
-void mosaiqueSNICPolygon(ImageBase &imIn, ImageBase &imOut, int numberSuperPixel, double compactness, bool repetition)
+void mosaiqueSNICPolygon(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &distances, std::vector<ImgInfo> &RegionInfo,
+    std::vector<int> &outLabels, int numberSuperPixel, double compactness, bool repetition)
 {
     int width   = imIn.getWidth();
     int height  = imIn.getHeight();
@@ -507,6 +540,8 @@ void mosaiqueSNICPolygon(ImageBase &imIn, ImageBase &imOut, int numberSuperPixel
 
     runSNIC(lImInLAB, aImInLAB, bImInLAB, width, height, labels, &nbrSuperPixel, numberSuperPixel, compactness);
 
+    outLabels.assign(labels, labels + size);
+
     // === On traite et stock les valeurs obtenues dans un vecteur de superpixel ===
 
     std::vector<SuperPixel> allSuperPixel(nbrSuperPixel);
@@ -543,13 +578,18 @@ void mosaiqueSNICPolygon(ImageBase &imIn, ImageBase &imOut, int numberSuperPixel
 
     int meansR, meansG, meansB, boundingBoxWidth, boundingBoxHeight, imageX, imageY;
     ImageBase imagette, resized;
-    bool color = imIn.getColor();
 
 
     for (int i = 0; i < nbrSuperPixel; ++i)
     {
-        // si le superpixel ne contient aucun pixel, on passe au suivant
-        if (allSuperPixel[i].nbrPixel == 0) continue;
+        // si le superpixel ne contient aucun pixel, on met un label factice pour garder l'alignement index = label
+        if (allSuperPixel[i].nbrPixel == 0) {
+            Tile emptyTile = {0, 0, 0, 0, -1};
+            tiles.push_back(emptyTile);
+            distances.push_back(0);
+            RegionInfo.push_back(ImgInfo());
+            continue;
+        }
 
         meansR = allSuperPixel[i].sumR / allSuperPixel[i].nbrPixel;
         meansG = allSuperPixel[i].sumG / allSuperPixel[i].nbrPixel;
@@ -559,10 +599,24 @@ void mosaiqueSNICPolygon(ImageBase &imIn, ImageBase &imOut, int numberSuperPixel
         boundingBoxHeight = allSuperPixel[i].maxY - allSuperPixel[i].minY + 1;
         
         //imagette = get_corresponding_image(color, used, meansR, meansG, meansB, repetition);
+
+        ImgInfo regionInfo;
+        regionInfo.R = meansR;
+        regionInfo.G = meansG;
+        regionInfo.B = meansB;
+        RegionInfo.push_back(regionInfo);
+
+        Tile tile = {allSuperPixel[i].minX, allSuperPixel[i].minY,
+            boundingBoxWidth, boundingBoxHeight, -1};
+
+        int distance = get_corresponding_image(tile, imIn.getColor(), used, meansR, meansG, meansB, repetition);
+
+        distances.push_back(distance);
+        tiles.push_back(tile);
         
         if (!imagette.getValidity()) continue;
 
-        resized = resizeImage(imagette, boundingBoxWidth, boundingBoxHeight);
+        /* resized = resizeImage(imagette, boundingBoxWidth, boundingBoxHeight);
         
         // on met le masque
         for (int y = 0; y < boundingBoxHeight; ++y){
@@ -580,7 +634,7 @@ void mosaiqueSNICPolygon(ImageBase &imIn, ImageBase &imOut, int numberSuperPixel
                     }
                 }
             }
-        }
+        } */
     }
 
     delete[] rImIn; delete[] gImIn; delete[] bImIn;

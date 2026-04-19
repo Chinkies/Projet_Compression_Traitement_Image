@@ -257,9 +257,11 @@ void ImageBase::copy(const ImageBase &copy)
 	for(int i = 0; i < nTaille; ++i)
 	{
 		data[i] = copy.data[i];
-		dataD[i] = copy.dataD[i];
 	}
 
+	if (copy.dataD != nullptr && dataD != nullptr) {
+		for(int i = 0; i < nTaille; ++i) dataD[i] = copy.dataD[i];
+	}
 }
 
 unsigned char *ImageBase::operator[](int l)
@@ -280,6 +282,10 @@ unsigned char *ImageBase::operator[](int l)
 }
 
 Pixel ImageBase::getPixel(int x, int y) {
+	if (!isValid || data == nullptr) { // <--- AJOUT SÉCURITÉ
+        // Retourne un pixel noir par défaut ou lance une erreur
+        Pixel p; p.R = p.G = p.B = p.N = 0; p.x = x; p.y = y; return p;
+    }
 	if (x < 0 || x >= width || y < 0 || y >= height) {
 		throw std::out_of_range("Pixel coordinates are out of bounds");
 	}
@@ -334,8 +340,5 @@ void ImageBase::setPixelTo(int x, int y, const Pixel& pixel)
 
 void ImageBase::operator=(const ImageBase &copy)
 {
-	
-	data = 0;
-	dataD = 0;
 	this->copy(copy);
 }

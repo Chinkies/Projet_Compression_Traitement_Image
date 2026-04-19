@@ -35,6 +35,7 @@ int main(int argc, char **argv) {
 	std::vector<Tile> tiles;	// Contient les imagettes de la mosaïque
 	std::vector<ImgInfo> RegionInfo;	// Contient les infos de chaque région de l'image d'entrée
 	std::vector<int> distances;	// Contient la distance entre chaque région de l'image d'entrée et l'imagette
+	std::vector<int> snicLabels; // Contient les labels nécessaire à la construction des tiles SNIC
 
 	bool used[imgInfos.size()] = {false};
 
@@ -46,15 +47,21 @@ int main(int argc, char **argv) {
     		mosaique2(imIn, tiles, distances, RegionInfo, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, 16, grilleMin, used, false);
 			break;
 		case '3':
-			mosaiqueSNICPolygon(imIn, imOut, 4000, 30, false);
-			imOut.save("mosaiqueSNICPolygon.ppm");
-			return 0;
+			mosaiqueSNICPolygon(imIn, tiles, distances, RegionInfo, snicLabels, 3000, 30, false);
+			break;
 		default:
 			std::cerr << "Type de mosaïque invalide. Utilisez '1', '2' ou '3'." << std::endl;
 			return 1;
 	}
 
-    imOut = constructMosaicFromTiles(tiles, imIn);
+	if (S == '3') {
+		imOut = constructMosaicFromLabels(tiles, snicLabels, imIn);
+	} else {
+		imOut = constructMosaicFromTiles(tiles, imIn);
+	}
+
+	std::cout << "Nbr de tiles : " << tiles.size() << "\n\n";
+
     double PSNR = calculatePSNR(imIn, imOut);
 	double SSIM = calculateSSIM(imIn, imOut);
 	std::cout << "Avant 2nd pass\n\tPSNR : " << PSNR << " dB" << std::endl;
@@ -62,7 +69,13 @@ int main(int argc, char **argv) {
 	imOut.save("mosaique.ppm");
 
     SecondPass(tiles, distances, RegionInfo, 20);
-    imOut2 = constructMosaicFromTiles(tiles, imIn);
+
+	if (S == '3') {
+		imOut2 = constructMosaicFromLabels(tiles, snicLabels, imIn);
+	} else {
+    	imOut2 = constructMosaicFromTiles(tiles, imIn);
+	}
+
     double PSNR2 = calculatePSNR(imIn, imOut2);
 	double SSIM2 = calculateSSIM(imIn, imOut2);
 	std::cout << "Après 2nd pass\n\tPSNR : " << PSNR2 << " dB" << std::endl;
