@@ -34,7 +34,7 @@ int get_corresponding_image(Tile &tile, bool color, bool *used, int R, int G, in
 ImageBase resizeImage(ImageBase& img, int newWidth, int newHeight);
 void mosaique2(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &distances, std::vector<ImgInfo> &RegionInfo, int x0, int y0,
     int regionWidth, int regionHeight, int seuilVariance, int tailleMin, int grilleMin, bool used[], bool repetition);
-void mosaique(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<ImgInfo> &RegionInfo, std::vector<int> &distances, float percent, bool repetion);
+void mosaique(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<ImgInfo> &RegionInfo, std::vector<int> &distances, float percent, bool repetion, int topK = 10);
 void mosaiqueSNICPolygon(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &distances, std::vector<ImgInfo> &RegionInfo,
     std::vector<int> &outLabels, int numberSuperPixel, double compactness, bool repetition, int topK = 10);
 ImageBase constructMosaicFromTiles(std::vector<Tile>& tiles, ImageBase &img);

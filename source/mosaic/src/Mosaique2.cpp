@@ -158,7 +158,7 @@ int get_corresponding_image(Tile &tile, bool color, bool *used, int R, int G, in
 int getBestRotation(ImageBase& regionTarget, ImgInfo& regionInfo, Tile& tile, bool used[], bool repetition, int topK){
     int bestIndex = -1;
     int bestRotation = 0; // Aucune rotation par default
-    long minDistance = 1000000;
+    long minDistance = __LONG_MAX__;
 
     std::vector<Candidate> candidates;
 
@@ -222,7 +222,9 @@ int getBestRotation(ImageBase& regionTarget, ImgInfo& regionInfo, Tile& tile, bo
 
 int getBestRotationForSpecificImage(ImageBase& regionTarget, Tile& tile) {
     int bestRotation = 0;
-    long minDistance = 1000000;
+    long minDistance = __LONG_MAX__;
+
+    if (tile.imgInfoIDx == -1) return 1000000;
     
     ImageBase loaded;
     loaded.loadFromBin(const_cast<char*>(imgInfos[tile.imgInfoIDx].getBinPath().c_str()), 
@@ -315,20 +317,23 @@ void SecondPass(std::vector<Tile> &tiles, std::vector<int> &distances, std::vect
     int tilesSize = tiles.size();
 
     for (int i = 0; i < tilesSize; i++) {
-
+        if (tiles[i].imgInfoIDx == -1) continue;
         if (distances[i] < seuil) continue;
 
         std::vector<Candidate> candidates;
     
         for (int j = 0; j < tilesSize; ++j){
             if (i == j) continue;
-            
+            if (tiles[j].imgInfoIDx == -1) continue;
+
             int difference = std::abs(RegionInfo[i].R - imgInfos[tiles[j].imgInfoIDx].R) +
                        std::abs(RegionInfo[i].G - imgInfos[tiles[j].imgInfoIDx].G) +
                        std::abs(RegionInfo[i].B - imgInfos[tiles[j].imgInfoIDx].B);
             
             candidates.push_back({j, difference});
         }
+
+        if (candidates.empty()) continue;
 
         std::sort(candidates.begin(), candidates.end(), [](const Candidate& a, const Candidate& b) {
             return a.difference < b.difference;
@@ -458,7 +463,7 @@ ImageBase constructMosaicFromLabels(std::vector<Tile>& tiles, const std::vector<
     return mosaic;
 }
 
-void mosaique(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<ImgInfo> &RegionInfo, std::vector<int> &distances, float percent, bool repetion) {
+void mosaique(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<ImgInfo> &RegionInfo, std::vector<int> &distances, float percent, bool repetion, int topK) {
     bool used[imgInfos.size()];
     for (size_t i = 0; i < imgInfos.size(); ++i) {
         used[i] = false;
@@ -475,7 +480,7 @@ void mosaique(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<ImgInfo> &R
 
     std::cout << "Number of cells : " << (width / gridWidth) * (height / gridHeight) << std::endl;
 
-    for (int y0 = 0; y0 < height; y0 += gridHeight) {
+    /* for (int y0 = 0; y0 < height; y0 += gridHeight) {
         for (int x0 = 0; x0 < width; x0 += gridWidth) {
             int tileWidth = std::min(gridWidth, width - x0);
             int tileHeight = std::min(gridHeight, height - y0);
@@ -512,8 +517,35 @@ void mosaique(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<ImgInfo> &R
             //std::cout << "Processed tile at (" << x0 << ", " << y0 << ") with distance " << distance << "\33[2K\r";
             
         }
+    } */
+
+    for (int y0 = 0; y0 < height; y0 += gridHeight) {
+        for (int x0 = 0; x0 < width; x0 += gridWidth) {
+            int tileWidth = std::min(gridWidth, width - x0);
+            int tileHeight = std::min(gridHeight, height - y0);
+
+            Tile tile = {x0, y0, tileWidth, tileHeight, -1, 0};
+            
+            ImageBase regionTarget = chargeTileRegion(tile, imIn);
+            
+            int R = 0, G = 0, B = 0;
+            for(int y=0; y<tileHeight; ++y)
+                for(int x=0; x<tileWidth; ++x) {
+                    Pixel p = regionTarget.getPixel(x, y);
+                    R += p.R; G += p.G; B += p.B;
+                }
+            R /= (tileWidth * tileHeight); G /= (tileWidth * tileHeight); B /= (tileWidth * tileHeight);
+
+            ImgInfo regionInfo;
+            regionInfo.R = R; regionInfo.G = G; regionInfo.B = B;
+            RegionInfo.push_back(regionInfo);
+
+            int distance = getBestRotation(regionTarget, regionInfo, tile, used, repetion, topK);
+            
+            distances.push_back(distance);
+            tiles.push_back(tile);
+        }
     }
-    
 }
 
 void mosaique2(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<int> &distances, std::vector<ImgInfo> &RegionInfo, int x0, int y0,

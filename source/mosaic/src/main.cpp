@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
 	initImgInfosFromBin(databaseLue);
 
     int seuilVariance = 500; // Seuil de variance pour la subdivision
-    int tailleMin = std::max(imIn.getWidth(), imIn.getHeight()) * (5/100); // Taille minimale d'une région pour la subdivision, 1% de la taille de l'image
+    int tailleMin = std::max(imIn.getWidth(), imIn.getHeight()) * (5.f/100.f); // Taille minimale d'une région pour la subdivision, 1% de la taille de l'image
 	int grilleMin = 2; // Nombre de subdivisions minimum
 
 	std::vector<Tile> tiles;	// Contient les imagettes de la mosaïque
@@ -39,17 +39,18 @@ int main(int argc, char **argv) {
 	std::vector<int> distances;	// Contient la distance entre chaque région de l'image d'entrée et l'imagette
 	std::vector<int> snicLabels; // Contient les labels nécessaire à la construction des tiles SNIC
 
-	bool used[imgInfos.size()] = {false};
-
+	//bool used[imgInfos.size()] = {false};
+	bool* used = new bool[imgInfos.size()]();
+	
 	switch(S) {
 		case '1':
-			mosaique(imIn, tiles, RegionInfo, distances, 0.02, false);
+			mosaique(imIn, tiles, RegionInfo, distances, 0.02, false, topK);
 			break;
 		case '2':
     		mosaique2(imIn, tiles, distances, RegionInfo, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, 16, grilleMin, used, false);
 			break;
 		case '3':
-			mosaiqueSNICPolygon(imIn, tiles, distances, RegionInfo, snicLabels, 3000, topK, false);
+			mosaiqueSNICPolygon(imIn, tiles, distances, RegionInfo, snicLabels, 6000, topK, false);
 			break;
 		default:
 			std::cerr << "Type de mosaïque invalide. Utilisez '1', '2' ou '3'." << std::endl;
@@ -63,7 +64,6 @@ int main(int argc, char **argv) {
 	}
 
 	std::cout << "Nbr de tiles : " << tiles.size() << "\n\n";
-
     double PSNR = calculatePSNR(imIn, imOut);
 	double SSIM = calculateSSIM(imIn, imOut);
 	std::cout << "Avant 2nd pass\n\tPSNR : " << PSNR << " dB" << std::endl;
@@ -91,5 +91,6 @@ int main(int argc, char **argv) {
 		imOut.save("mosaique.ppm");
 	}*/
 
+    delete[] used;
 	return 0;
 }
