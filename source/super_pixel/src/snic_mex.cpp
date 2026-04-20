@@ -39,7 +39,7 @@
  booktitle = {IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, year = {2017} }
  */
 
-#include <snic_mex.hpp>
+#include "snic_mex.hpp"
 
 void rgbtolab(int* rin, int* gin, int* bin, int sz, double* lvec, double* avec, double* bvec)
 {
