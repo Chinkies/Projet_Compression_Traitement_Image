@@ -33,7 +33,7 @@ La compilation s'effectue a l'aide de CMake. Suivez ces etapes :
    cd build
 
 2. Generez les fichiers de compilation :
-   cmake ..
+   cmake -DCMAKE_BUILD_TYPE=Release ..
 
 3. Compilez le projet :
    make
