@@ -44,3 +44,4 @@ void SecondPass(std::vector<Tile> &tiles, std::vector<int> &distances, std::vect
 // topK correspond au nombre d'image que l'on garde (image proche en distance RGB) pour tester pixel à pixel
 int getBestRotation(Tile& tile, ImgInfo& regionInfo, ImageBase& imIn, bool used[], bool repetition, int topK = 10);
 int getBestRotationForSpecificImage(ImageBase& regionTarget, Tile& tile);
+void saveMosaicGrid(ImageBase &imIn, const std::vector<Tile> &tiles, const std::vector<int> &labels, bool isSNIC, const char* filename);

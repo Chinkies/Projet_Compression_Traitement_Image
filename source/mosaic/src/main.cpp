@@ -10,8 +10,10 @@
 int main(int argc, char **argv) {
 	char cNomImgLue[250], databaseLue[250];
 	char S;
-	int topK;
-	if (argc != 5) 
+	int topK, saveGrid;
+
+
+	if (argc != 6) 
 	{
 		printf("Usage: ImageIn.ppm/pgm database.bin type_de_mosaique(1, 2 ou 3)\n"); 
 		return 1;
@@ -20,7 +22,8 @@ int main(int argc, char **argv) {
 	sscanf (argv[2],"%s",databaseLue);
 	sscanf (argv[3],"%c",&S);
 	sscanf (argv[4],"%d",&topK);
-	
+	sscanf (argv[5],"%d",&saveGrid);
+
 	ImageBase imIn;
 	imIn.load(cNomImgLue);
 
@@ -44,7 +47,7 @@ int main(int argc, char **argv) {
 	
 	switch(S) {
 		case '1':
-			mosaique(imIn, tiles, RegionInfo, distances, 0.02, false, topK);
+			mosaique(imIn, tiles, RegionInfo, distances, 0.06, false, topK);
 			break;
 		case '2':
     		mosaique2(imIn, tiles, distances, RegionInfo, 0, 0, imIn.getWidth(), imIn.getHeight(), seuilVariance, 16, grilleMin, used, false);
@@ -61,6 +64,11 @@ int main(int argc, char **argv) {
 		imOut = constructMosaicFromLabels(tiles, snicLabels, imIn);
 	} else {
 		imOut = constructMosaicFromTiles(tiles, imIn);
+	}
+
+	if (saveGrid == 1) {
+		bool isSnic = (S == '3');
+		saveMosaicGrid(imIn, tiles, snicLabels, isSnic, "debug_grille.ppm");
 	}
 
 	std::cout << "Nbr de tiles : " << tiles.size() << "\n\n";

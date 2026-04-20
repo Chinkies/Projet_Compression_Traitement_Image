@@ -809,3 +809,54 @@ void mosaiqueSNICPolygon(ImageBase &imIn, std::vector<Tile> &tiles, std::vector<
     delete[] labels;
     delete[] used;
 }
+
+void saveMosaicGrid(ImageBase &imIn, const std::vector<Tile> &tiles, const std::vector<int> &labels, bool isSNIC, const char* filename) {
+
+    ImageBase gridImg(imIn.getWidth(), imIn.getHeight(), imIn.getColor());
+    
+    for(int y=0; y<imIn.getHeight(); ++y) {
+        for(int x=0; x<imIn.getWidth(); ++x) {
+            gridImg.setPixelTo(x, y, imIn.getPixel(x, y));
+        }
+    }
+
+    Pixel gridColor;
+    gridColor.R = 255;
+    gridColor.G = 255;
+    gridColor.B = 0;
+    gridColor.color = true;
+
+    if (isSNIC && !labels.empty()) {
+        int w = imIn.getWidth();
+        int h = imIn.getHeight();
+        for (int y = 0; y < h - 1; ++y) {
+            for (int x = 0; x < w - 1; ++x) {
+                int currentLabel = labels[y * w + x];
+                if (currentLabel != labels[y * w + (x + 1)] || 
+                    currentLabel != labels[(y + 1) * w + x]) {
+                    gridImg.setPixelTo(x, y, gridColor);
+                }
+            }
+        }
+    } else {
+        for (const auto& tile : tiles) {
+            for (int x = tile.x; x < tile.x + tile.width; ++x) {
+                if (x < gridImg.getWidth()) {
+                    gridImg.setPixelTo(x, tile.y, gridColor);
+                    if (tile.y + tile.height - 1 < gridImg.getHeight())
+                        gridImg.setPixelTo(x, tile.y + tile.height - 1, gridColor);
+                }
+            }
+            for (int y = tile.y; y < tile.y + tile.height; ++y) {
+                if (y < gridImg.getHeight()) {
+                    gridImg.setPixelTo(tile.x, y, gridColor);
+                    if (tile.x + tile.width - 1 < gridImg.getWidth())
+                        gridImg.setPixelTo(tile.x + tile.width - 1, y, gridColor);
+                }
+            }
+        }
+    }
+
+    gridImg.save(const_cast<char*>(filename));
+    std::cout << "Grille sauvegardée sous : " << filename << std::endl;
+}
